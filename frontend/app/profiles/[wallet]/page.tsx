@@ -313,8 +313,10 @@ export default function ProfilePage() {
 
             <div className={styles.formGrid}>
               <div className={styles.modalField}>
-                <label>Operational Tagline</label>
+                <label htmlFor="edit-tagline">Operational Tagline</label>
                 <input 
+                  id="edit-tagline"
+                  name="edit-tagline"
                   className={styles.modalInput}
                   value={editForm.tagline}
                   onChange={e => setEditForm(p => ({...p, tagline: e.target.value}))}
@@ -323,8 +325,10 @@ export default function ProfilePage() {
               </div>
 
               <div className={styles.modalField}>
-                <label>Professional Bio</label>
+                <label htmlFor="edit-bio">Professional Bio</label>
                 <textarea 
+                  id="edit-bio"
+                  name="edit-bio"
                   className={`${styles.modalInput} ${styles.modalTextarea}`}
                   value={editForm.bio}
                   onChange={e => setEditForm(p => ({...p, bio: e.target.value}))}
@@ -333,8 +337,10 @@ export default function ProfilePage() {
               </div>
 
               <div className={styles.modalField}>
-                <label>GitHub Identifier</label>
+                <label htmlFor="edit-github">GitHub Identifier</label>
                 <input 
+                  id="edit-github"
+                  name="edit-github"
                   className={styles.modalInput}
                   value={editForm.github_url}
                   onChange={e => setEditForm(p => ({...p, github_url: e.target.value}))}
@@ -343,8 +349,10 @@ export default function ProfilePage() {
               </div>
 
               <div className={styles.modalField}>
-                <label>Core Skills (comma separated)</label>
+                <label htmlFor="edit-skills">Core Skills (comma separated)</label>
                 <input 
+                  id="edit-skills"
+                  name="edit-skills"
                   className={styles.modalInput}
                   value={editForm.skills}
                   onChange={e => setEditForm(p => ({...p, skills: e.target.value}))}

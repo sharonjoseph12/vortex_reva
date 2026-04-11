@@ -202,8 +202,10 @@ export default function DisputesPage() {
                 <div className={styles.castVote}>
                   <span className="data-marker">Cast Your Vote</span>
                   <div className={styles.stakeInput}>
-                    <label className="input-label">Stake (ALGO)</label>
+                    <label htmlFor="voteStake" className="input-label">Stake (ALGO)</label>
                     <input
+                      id="voteStake"
+                      name="voteStake"
                       className="input"
                       type="number"
                       step="0.1"

@@ -91,7 +91,12 @@ export default function BountyComments() {
 
       {wallet ? (
         <form onSubmit={handleSend} style={{ display: 'flex', gap: '12px' }}>
+          <label htmlFor="mission-comment" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+            Post mission clarification
+          </label>
           <input 
+            id="mission-comment"
+            name="mission-comment"
             className="input" 
             placeholder="Ask for mission clarification..." 
             value={newComment}
