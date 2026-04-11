@@ -1,0 +1,159 @@
+.header {
+  margin-bottom: var(--space-3xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+  max-width: 650px;
+}
+
+.metricRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xl);
+  margin-bottom: var(--space-3xl);
+}
+
+.metricCard {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 24px;
+  border-radius: var(--radius-xl);
+}
+
+.mHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mLabel {
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mValue {
+  font-size: 2rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.section {
+  margin-bottom: var(--space-4xl);
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tableCard {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 16px 24px;
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.table td {
+  padding: 16px 24px;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.subId {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+.cat {
+  font-weight: 600;
+}
+
+.aiVer {
+  color: var(--accent-danger);
+  font-weight: 700;
+}
+
+.humanVer {
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+.deltaBadge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.625rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.deltaHigh {
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
+  border: 1px solid rgba(255, 59, 48, 0.2);
+}
+
+.deltaMedium {
+  background: rgba(255, 159, 10, 0.1);
+  color: #ff9f0a;
+  border: 1px solid rgba(255, 159, 10, 0.2);
+}
+
+.deltaLow {
+  background: rgba(48, 209, 88, 0.1);
+  color: #30d158;
+  border: 1px solid rgba(48, 209, 88, 0.2);
+}
+
+.reason {
+  color: var(--text-tertiary);
+  font-size: 0.8125rem;
+}
+
+.infoSection {
+  margin-top: auto;
+}
+
+.infoCard {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--accent-info-dim);
+  padding: 24px;
+  border-radius: var(--radius-lg);
+}

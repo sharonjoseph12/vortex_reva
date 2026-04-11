@@ -1,0 +1,190 @@
+.container {
+  background: #FFFFFF;
+  color: #1A1A1A;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+  font-family: var(--font-sans);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.header {
+  padding: 24px 32px;
+  background: #1A1A1A;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+  background: var(--accent-primary);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: black;
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+}
+
+.protocolName {
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+}
+
+.tagline {
+  font-size: 0.625rem;
+  color: #888;
+  letter-spacing: 0.05em;
+}
+
+.signedBadge {
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: var(--accent-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--accent-primary-dim);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}
+
+.body {
+  padding: 40px 32px;
+}
+
+.titleInfo {
+  margin-bottom: 32px;
+}
+
+.titleInfo h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0 0 4px 0;
+}
+
+.id {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.divider {
+  height: 1px;
+  background: #EEE;
+  margin: 24px 0;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.record {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rLabel {
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: #999;
+  text-transform: uppercase;
+}
+
+.rValue {
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  word-break: break-all;
+}
+
+.rIcon {
+  color: var(--accent-primary);
+}
+
+.footerSignature {
+  margin-top: 40px;
+  padding: 20px;
+  background: #F9F9F9;
+  border-radius: 8px;
+  border-left: 4px solid var(--accent-primary);
+}
+
+.sigLabel {
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: #666;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sigValue {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #1A1A1A;
+  margin-bottom: 4px;
+}
+
+.hashValue {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: #999;
+}
+
+.actions {
+  padding: 24px 32px;
+  background: #F5F5F5;
+  border-top: 1px solid #EEE;
+}
+
+.downloadBtn {
+  width: 100%;
+  padding: 12px;
+  background: #1A1A1A;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.downloadBtn:hover {
+  opacity: 0.9;
+}

@@ -1,0 +1,241 @@
+.header {
+  margin-bottom: var(--space-2xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.liveIndicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-primary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: var(--space-md);
+}
+
+.pulseDot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 208, 255, 0.4); }
+  50% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 208, 255, 0); }
+  100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 208, 255, 0); }
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+  max-width: 600px;
+  margin: 0;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+.mainGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+}
+
+.statsPanel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-lg);
+}
+
+.statCard {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.statCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--accent-primary);
+  opacity: 0.2;
+}
+
+.sHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  margin-bottom: var(--space-lg);
+}
+
+.sVal {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.sSubtitle {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+.chartsPanel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+}
+
+.chartBox {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+}
+
+.detailsPanel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+}
+
+.detailSection {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xl);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.treasuryInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.tRow span:first-child {
+  color: var(--text-secondary);
+}
+
+.tRow span:last-child {
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.arbiterList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.aRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.aInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aAddr {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.aStatus {
+  font-size: 0.7rem;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.aStats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.miniBar {
+  width: 60px;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--accent-primary);
+}
+
+@media (max-width: 1024px) {
+  .chartsPanel, .detailsPanel {
+    grid-template-columns: 1fr;
+  }
+}

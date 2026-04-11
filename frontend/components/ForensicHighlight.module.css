@@ -1,0 +1,136 @@
+.terminalContainer {
+  background: #0d1117;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+}
+
+.terminalHeader {
+  background: rgba(255,255,255,0.05);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dots {
+  display: flex;
+  gap: 6px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.summaryArea {
+  padding: 20px;
+  background: rgba(255, 95, 86, 0.05);
+  border-bottom: 1px solid rgba(255, 95, 86, 0.2);
+}
+
+.summaryTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #FF5F56;
+  font-size: 0.8rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.summaryText {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #fff;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.codeArea {
+  padding: 16px 0;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.lineWrapper {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  position: relative;
+  min-height: 24px;
+}
+
+.lineNum {
+  width: 32px;
+  flex-shrink: 0;
+  color: #484f58;
+  font-size: 0.75rem;
+  user-select: none;
+}
+
+.lineText {
+  color: #c9d1d9;
+  font-size: 0.85rem;
+  white-space: pre;
+}
+
+.flaggedLine {
+  background: rgba(255, 189, 46, 0.1);
+}
+
+.flaggedLine::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #FFBD2E;
+}
+
+.flagTooltip {
+  position: absolute;
+  left: 60px;
+  top: 100%;
+  background: #1f242d;
+  border: 1px solid #FFBD2E;
+  padding: 12px;
+  border-radius: 8px;
+  z-index: 100;
+  width: 300px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  margin-top: 4px;
+}
+
+.flagMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #FFBD2E;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.fixHint {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  color: var(--accent-primary);
+}
+
+.fixHint strong {
+  margin-right: 4px;
+}

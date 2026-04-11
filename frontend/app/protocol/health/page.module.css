@@ -1,0 +1,152 @@
+.hero {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3xl);
+  overflow: hidden;
+  position: relative;
+}
+
+.heroContent {
+  max-width: 600px;
+}
+
+.title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.heroStats {
+  background: white;
+  padding: 32px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-premium);
+  text-align: right;
+}
+
+.heroLabel {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+
+.heroValue {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent-primary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3xl);
+}
+
+.stackGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.healthItem {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.healthIcon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+}
+
+.healthLabel {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+}
+
+.healthDetail {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.statusOk, .statusErr {
+  font-size: 0.625rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.statusOk { background: var(--accent-primary-dim); color: var(--accent-primary); }
+.statusErr { background: rgba(239, 68, 68, 0.1); color: var(--accent-danger); }
+
+.statBox {
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.miniLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.miniVal {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 8px 0;
+  color: var(--text-primary);
+}
+
+.miniDetail {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.refreshBar {
+  margin-top: var(--space-3xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .hero { flex-direction: column; gap: 40px; text-align: center; }
+  .grid { grid-template-columns: 1fr; }
+  .heroStats { text-align: center; }
+}

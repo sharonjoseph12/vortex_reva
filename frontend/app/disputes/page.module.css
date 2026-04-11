@@ -1,0 +1,186 @@
+.layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 2px;
+  min-height: 500px;
+}
+
+/* List */
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.disputeList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.disputeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+  width: 100%;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.disputeRow:hover {
+  border-color: var(--border-active);
+  background: var(--bg-card-hover);
+}
+
+.disputeRowActive {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-dim);
+}
+
+.disputeInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.disputeId {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.disputeMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voteBar {
+  display: flex;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* Detail */
+.detail {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.detailSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detailLabel {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-tertiary);
+}
+
+.detailValue {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.claim {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Vote Section */
+.voteSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+}
+
+.voteSide {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 80px;
+}
+
+.voteCount {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.voteLabel {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+}
+
+.vsBar {
+  flex: 1;
+  height: 6px;
+  background: var(--accent-danger-dim);
+  position: relative;
+  overflow: hidden;
+}
+
+.vsBarFill {
+  height: 100%;
+  background: var(--accent-primary);
+  transition: width var(--transition-slow);
+}
+
+/* Cast Vote */
+.castVote {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.stakeInput {
+  max-width: 200px;
+}
+
+.voteActions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}

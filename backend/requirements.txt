@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+sqlalchemy
+pydantic[email]
+python-jose[cryptography]
+passlib
+docker
+google-genai
+py-algorand-sdk
+pytest
+httpx
+sse-starlette
+aiofiles
+algorand-python

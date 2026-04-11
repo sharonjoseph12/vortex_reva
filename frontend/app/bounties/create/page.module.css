@@ -1,0 +1,133 @@
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  margin-bottom: var(--space-xl);
+  transition: var(--transition);
+}
+
+.backLink:hover {
+  color: var(--accent-primary);
+  transform: translateX(-4px);
+}
+
+.formCard {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-premium);
+  overflow: hidden;
+}
+
+.formBody {
+  padding: var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.assetSelector {
+  margin-bottom: var(--space-sm);
+}
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.typeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 700;
+  color: var(--text-secondary);
+  position: relative;
+}
+
+.typeBtn:hover {
+  background: var(--bg-primary);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.typeBtnActive {
+  background: var(--bg-primary);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.activeDot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-primary);
+  border-radius: 50%;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xl);
+}
+
+.verificationSection {
+  background: var(--bg-secondary);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-color);
+}
+
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.error {
+  padding: var(--space-md);
+  background: #FEE2E2;
+  border-radius: var(--radius);
+  color: #991B1B;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid #FECACA;
+}
+
+.guardrailBox {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-top: var(--space-lg);
+}
+
+@media (max-width: 600px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+  .typeGrid {
+    grid-template-columns: 1fr;
+  }
+}
