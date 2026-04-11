@@ -77,7 +77,7 @@ async def auth_verify(req: VerifyAuthRequest, db: Session = Depends(get_db)):
         "token": token,
         "user": {
             "wallet_address": user.wallet_address,
-            "role": user.role.value if hasattr(user.role, 'value') else user.role,
+            "role": str(user.role.value if hasattr(user.role, 'value') else user.role).lower(),
             "reputation_score": user.reputation_score,
             "created_at": user.created_at.isoformat() if user.created_at else None,
         },
@@ -91,7 +91,7 @@ async def auth_me(user: dict = Depends(require_auth), db: Session = Depends(get_
         
     return _resp({
         "wallet_address": db_user.wallet_address,
-        "role": db_user.role.value if hasattr(db_user.role, 'value') else db_user.role,
+        "role": str(db_user.role.value if hasattr(db_user.role, 'value') else db_user.role).lower(),
         "reputation_score": db_user.reputation_score,
         "total_earned": db_user.total_earned,
         "total_locked": db_user.total_locked,
@@ -177,7 +177,7 @@ async def user_profile(wallet: str, db: Session = Depends(get_db)):
 
     return _resp({
         "wallet_address": user.wallet_address,
-        "role": user.role.value if hasattr(user.role, 'value') else user.role,
+        "role": str(user.role.value if hasattr(user.role, 'value') else user.role).lower(),
         "tagline": user.tagline,
         "bio": user.bio,
         "reputation_score": user.reputation_score,

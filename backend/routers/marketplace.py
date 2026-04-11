@@ -29,12 +29,12 @@ async def create_bounty(req: CreateBountyRequest, user: dict = Depends(require_b
         description=req.description,
         requirements=req.requirements,
         verification_criteria=req.verification_criteria,
-        asset_type=req.asset_type.value,
+        asset_type=str(req.asset_type.value if hasattr(req.asset_type, 'value') else req.asset_type).upper(),
         reward_algo=req.reward_algo,
         buyer_wallet=user["wallet"],
         deadline=req.deadline,
-        difficulty=req.difficulty.value,
-        category=req.category.value,
+        difficulty=str(req.difficulty.value if hasattr(req.difficulty, 'value') else req.difficulty).upper(),
+        category=str(req.category.value if hasattr(req.category, 'value') else req.category).upper(),
         app_id=req.app_id or int(os.getenv("APP_ID", "1001")),
         status=BountyStatus.ACTIVE,
     )
@@ -55,9 +55,9 @@ async def list_bounties(
     db: Session = Depends(get_db),
 ):
     q = db.query(Bounty)
-    if status: q = q.filter(Bounty.status == status)
-    if difficulty: q = q.filter(Bounty.difficulty == difficulty)
-    if category: q = q.filter(Bounty.category == category)
+    if status: q = q.filter(Bounty.status == status.upper())
+    if difficulty: q = q.filter(Bounty.difficulty == difficulty.upper())
+    if category: q = q.filter(Bounty.category == category.upper())
     if buyer: q = q.filter(Bounty.buyer_wallet == buyer)
 
     if sort == "reward": q = q.order_by(Bounty.reward_algo.desc())
@@ -72,8 +72,9 @@ async def list_bounties(
         sub_count = db.query(Submission).filter(Submission.bounty_id == b.id).count()
         items.append({
             "id": b.id, "title": b.title, "description": b.description[:200],
-            "reward_algo": b.reward_algo, "status": b.status.value if hasattr(b.status, 'value') else b.status,
-            "category": b.category.value if hasattr(b.category, 'value') else b.category,
+            "reward_algo": b.reward_algo, 
+            "status": str(b.status.value if hasattr(b.status, 'value') else b.status).lower(),
+            "category": str(b.category.value if hasattr(b.category, 'value') else b.category).lower(),
             "buyer_wallet": b.buyer_wallet,
             "deadline": b.deadline.isoformat() if b.deadline else None,
             "submission_count": sub_count,
@@ -93,10 +94,10 @@ async def get_bounty(bounty_id: str, db: Session = Depends(get_db)):
         "verification_criteria": bounty.verification_criteria,
         "reward_algo": bounty.reward_algo,
         "app_id": bounty.app_id,
-        "status": bounty.status.value if hasattr(bounty.status, 'value') else bounty.status,
-        "difficulty": bounty.difficulty.value if hasattr(bounty.difficulty, 'value') else bounty.difficulty,
-        "category": bounty.category.value if hasattr(bounty.category, 'value') else bounty.category,
-        "asset_type": bounty.asset_type.value if hasattr(bounty.asset_type, 'value') else bounty.asset_type,
+        "status": str(bounty.status.value if hasattr(bounty.status, 'value') else bounty.status).lower(),
+        "difficulty": str(bounty.difficulty.value if hasattr(bounty.difficulty, 'value') else bounty.difficulty).lower(),
+        "category": str(bounty.category.value if hasattr(bounty.category, 'value') else bounty.category).lower(),
+        "asset_type": str(bounty.asset_type.value if hasattr(bounty.asset_type, 'value') else bounty.asset_type).lower(),
         "buyer_wallet": bounty.buyer_wallet,
         "deadline": bounty.deadline.isoformat() if bounty.deadline else None,
         "submission_count": sub_count,

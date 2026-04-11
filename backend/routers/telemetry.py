@@ -100,12 +100,12 @@ async def get_arbiters_pulse(db: Session = Depends(get_db)):
     arbiters = db.query(User).filter(User.role == UserRole.BUYER).all()
     # Mocking live pulse mechanics for the UI demo based on DB records
     pulse_data = []
-    for a in arbiters[:10]: # Top 10
+    for user in arbiters[:10]: # Top 10
         pulse_data.append({
-            "wallet": a.wallet_address,
-            "participation": 95 + len(a.wallet_address) % 5,
-            "alignment": 90 + len(a.wallet_address) % 10,
-            "total_votes": 12 + len(a.wallet_address) % 20,
+            "wallet": user.wallet_address,
+            "role": str(user.role.value if hasattr(user.role, 'value') else user.role).lower(),
+            "reputation_score": user.reputation_score,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
             "status": "Online"
         })
     return _resp({
@@ -123,7 +123,7 @@ async def get_transactions(wallet: str, db: Session = Depends(get_db)):
     txns = db.query(Transaction).filter(Transaction.wallet_address == wallet).order_by(Transaction.created_at.desc()).all()
     return _resp({
         "transactions": [{
-            "id": t.id, "type": t.type.value, "amount": t.amount_algo, 
+            "id": t.id, "type": t.type, "amount": t.amount_algo, 
             "tx_hash": t.tx_hash, "date": t.created_at.isoformat()
         } for t in txns]
     })

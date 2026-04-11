@@ -60,8 +60,10 @@ async def submit_work(
     bounty = db.query(Bounty).filter(Bounty.id == bounty_id).first()
     if not bounty:
         raise HTTPException(404, "Bounty not found")
-    if bounty.status != BountyStatus.ACTIVE:
-        raise HTTPException(400, "Bounty is not active")
+    # Case-insensitive status check
+    current_status = str(bounty.status.value if hasattr(bounty.status, 'value') else bounty.status).upper()
+    if current_status != "ACTIVE":
+        raise HTTPException(400, f"Bounty is not active (status: {current_status})")
 
     submission = Submission(
         bounty_id=bounty_id,
@@ -78,7 +80,7 @@ async def submit_work(
     # In a full PRO version, this would be a background task
     
     # Layer 1: Static Analysis
-    asset_type_str = str(bounty.asset_type.value if hasattr(bounty.asset_type, 'value') else bounty.asset_type)
+    asset_type_str = str(bounty.asset_type.value if hasattr(bounty.asset_type, 'value') else bounty.asset_type).lower()
     print(f"[VORTEX-PIPELINE] Processing Bounty: {bounty_id}, AssetType: {asset_type_str}")
     
     if asset_type_str == "code":
@@ -254,7 +256,8 @@ async def verification_stream(bounty_id: str):
 async def get_submissions(bounty_id: str, db: Session = Depends(get_db)):
     subs = db.query(Submission).filter(Submission.bounty_id == bounty_id).all()
     items = [{
-        "id": s.id, "seller_wallet": s.seller_wallet, "status": s.status.value,
+        "id": s.id, "seller_wallet": s.seller_wallet, 
+        "status": str(s.status.value if hasattr(s.status, 'value') else s.status).lower(),
         "submitted_at": s.submitted_at.isoformat() if s.submitted_at else None,
         "tx_id": s.tx_id, "settlement_time": s.settlement_time,
         "static_passed": s.static_passed, "sandbox_passed": s.sandbox_passed, "jury_passed": s.jury_passed
@@ -265,7 +268,8 @@ async def get_submissions(bounty_id: str, db: Session = Depends(get_db)):
 async def generate_forensics(submission_id: str, db: Session = Depends(get_db)):
     sub = db.query(Submission).filter(Submission.id == submission_id).first()
     if not sub: raise HTTPException(404, "Submission not found")
-    if sub.status == SubmissionStatus.PASSED:
+    current_status = str(sub.status.value if hasattr(sub.status, 'value') else sub.status).upper()
+    if current_status == "PASSED":
         return {"success": True, "data": {"summary": "Submission verified. No forensics needed."}}
 
     bounty = sub.bounty
@@ -293,7 +297,7 @@ async def my_submissions(user: dict = Depends(require_seller), db: Session = Dep
             "bounty_id": s.bounty_id, 
             "bounty_title": b.title if b else "Unknown Bounty",
             "reward_algo": float(b.reward_algo) if b else 0,
-            "status": s.status.value,
+            "status": str(s.status.value if hasattr(s.status, 'value') else s.status).lower(),
             "submitted_at": s.submitted_at.isoformat() if s.submitted_at else None,
             "tx_id": s.tx_id
         })
