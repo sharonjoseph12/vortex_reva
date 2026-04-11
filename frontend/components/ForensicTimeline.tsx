@@ -1,7 +1,7 @@
 'use client';
 
 import { 
-  CheckCircle, Circle, Play, Shield, Gavel, Cpu 
+  CheckCircle, Circle, Play, Shield, Gavel, Cpu, XCircle 
 } from 'lucide-react';
 import ExplorerLink from './ExplorerLink';
 
@@ -94,14 +94,6 @@ export default function ForensicTimeline({ stages }: ForensicTimelineProps) {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function XCircle({ size, color }: { size: number; color: string }) {
-  return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'black' }}>
-      <span style={{ fontWeight: 800, fontSize: '12px' }}>X</span>
     </div>
   );
 }

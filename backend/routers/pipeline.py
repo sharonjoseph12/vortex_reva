@@ -54,6 +54,8 @@ async def submit_work(
     user: dict = Depends(require_seller),
     db: Session = Depends(get_db),
 ):
+    sandbox_result = None
+    jury_result = None
     start_time = time.time()
     bounty = db.query(Bounty).filter(Bounty.id == bounty_id).first()
     if not bounty:
@@ -150,7 +152,8 @@ async def submit_work(
     if not submission.jury_passed:
          submission.status = SubmissionStatus.FAILED
          db.commit()
-         error_kind = "AI Service Error (Rate Limit)" if jury_result.get("is_rate_limit") else "AI Jury Rejection"
+         is_rate_limit = jury_result.get("is_rate_limit") if jury_result else False
+         error_kind = "AI Service Error (Rate Limit)" if is_rate_limit else "AI Jury Rejection"
          return {"success": False, "error": f"{error_kind}: {message}"}
 
     # Finalize Settlement
@@ -216,7 +219,7 @@ async def submit_work(
         "success": True, 
         "data": {
             "settlement_time_seconds": elapsed, 
-            "tests_passed": sandbox_result["tests_passed"] if "sandbox_result" in dir() else 0, 
+            "tests_passed": sandbox_result["tests_passed"] if sandbox_result else 0, 
             "nft_id": submission.nft_id,
             "tx_id": submission.tx_id
         }

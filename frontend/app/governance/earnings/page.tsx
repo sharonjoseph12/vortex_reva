@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/lib/store';
+import { getGovernanceEarnings } from '@/lib/api';
 import { 
   TrendingUp, ShieldAlert, Award, 
   History, ArrowUpRight, ArrowDownRight,
@@ -32,11 +33,10 @@ export default function EarningsPage() {
     if (!wallet) return;
     async function load() {
       try {
-        const res = await fetch('http://localhost:8000/governance/my-earnings', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('vortex_token')}` }
-        });
-        const resJson = await res.json();
-        setData(resJson.data);
+        const res = await getGovernanceEarnings();
+        if (res.success) {
+          setData(res.data);
+        }
       } catch (err) {
         console.error('Failed to load earnings', err);
       } finally {

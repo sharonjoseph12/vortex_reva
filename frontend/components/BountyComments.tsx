@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
+import { listComments, postComment } from '@/lib/api';
 import { MessageSquare, Send, User, Clock, Loader2 } from 'lucide-react';
 
 interface Comment {
@@ -26,11 +27,9 @@ export default function BountyComments() {
 
   async function fetchComments() {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${API_URL}/bounties/${bountyId}/comments`);
-      const data = await res.json();
-      if (data.success) {
-        setComments(data.data);
+      const res = await listComments(bountyId as string);
+      if (res.success) {
+        setComments(res.data);
       }
     } catch (err) {
       console.error("Failed to fetch comments", err);
@@ -45,15 +44,9 @@ export default function BountyComments() {
 
     setSending(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${API_URL}/bounties/${bountyId}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: newComment })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setComments([...comments, data.data]);
+      const res = await postComment(bountyId as string, newComment);
+      if (res.success) {
+        setComments([...comments, res.data]);
         setNewComment('');
       }
     } catch (err) {

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { summarizeCriteria } from '@/lib/api';
 import { Cpu, CheckCircle, Info, Loader2 } from 'lucide-react';
 
 interface LogicHumanizerProps {
@@ -18,19 +19,10 @@ export default function LogicHumanizer({ criteria }: LogicHumanizerProps) {
         return;
       }
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${API_URL}/pipeline/summarize-criteria`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ criteria })
-        });
-        const data = await res.json();
-        if (data.success && data.data.summary) {
-          // Expecting bullet points from AI
-          const lines = data.data.summary.split('\n')
-            .map((l: string) => l.replace(/^[*-]\s*/, '').trim())
-            .filter(Boolean);
-          setSummary(lines);
+        const res = await summarizeCriteria(criteria);
+        if (res.success && res.data.summary) {
+          // AI returns an array of strings
+          setSummary(res.data.summary);
         }
       } catch (err) {
         console.error("Logic Humanizer Failed:", err);

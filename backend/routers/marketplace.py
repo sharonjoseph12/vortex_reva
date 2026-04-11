@@ -90,11 +90,17 @@ async def get_bounty(bounty_id: str, db: Session = Depends(get_db)):
     return _resp({
         "id": bounty.id, "title": bounty.title, "description": bounty.description,
         "requirements": bounty.requirements,
+        "verification_criteria": bounty.verification_criteria,
         "reward_algo": bounty.reward_algo,
         "app_id": bounty.app_id,
         "status": bounty.status.value if hasattr(bounty.status, 'value') else bounty.status,
+        "difficulty": bounty.difficulty.value if hasattr(bounty.difficulty, 'value') else bounty.difficulty,
         "category": bounty.category.value if hasattr(bounty.category, 'value') else bounty.category,
+        "asset_type": bounty.asset_type.value if hasattr(bounty.asset_type, 'value') else bounty.asset_type,
+        "buyer_wallet": bounty.buyer_wallet,
+        "deadline": bounty.deadline.isoformat() if bounty.deadline else None,
         "submission_count": sub_count,
+        "created_at": bounty.created_at.isoformat() if bounty.created_at else None,
     })
 
 @router.post("/generate-tests")

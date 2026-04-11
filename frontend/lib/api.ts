@@ -367,7 +367,6 @@ export async function getMySubmissions() {
     tx_id: string | null 
   }> }>('/pipeline/mine');
 }
-
 // ── Disputes ──
 
 export async function listDisputes() {
@@ -401,6 +400,21 @@ export async function voteDispute(
       body: JSON.stringify({ vote, stake_algo: stakeAlgo }),
     }
   );
+}
+
+export async function getGovernanceEarnings() {
+  return apiFetch<any>('/governance/my-earnings');
+}
+
+export async function listComments(bountyId: string) {
+  return apiFetch<any[]>(`/bounties/${bountyId}/comments`);
+}
+
+export async function postComment(bountyId: string, text: string) {
+  return apiFetch<any>(`/bounties/${bountyId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
 }
 
 // ── Transactions ──
