@@ -2,8 +2,8 @@ import os
 import asyncio
 from google import genai
 from google.genai import types
-
-os.environ["GEMINI_API_KEY"] = "AIzaSyARsHOC4k4umDQb_DglEwwQj5ZakikrYlM"
+from dotenv import load_dotenv
+load_dotenv()
 
 client = genai.Client()
 
