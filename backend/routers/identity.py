@@ -34,16 +34,28 @@ async def auth_nonce_post(req: NonceRequest):
     nonce = generate_nonce(req.wallet_address)
     return _resp({"nonce": nonce})
 
-@router.get("/auth/nonce")
-async def auth_nonce_get(wallet: Optional[str] = Query(None)):
-    if not wallet:
-        return _resp(error="Missing 'wallet' query parameter (58-character Algorand address required)")
-    
-    if len(wallet) != 58:
-        return _resp(error="Invalid wallet address length. Must be exactly 58 characters.")
-        
-    nonce = generate_nonce(wallet)
-    return _resp({"nonce": nonce})
+@router.get("/auth/params")
+async def auth_params():
+    """Fetch live Algorand suggested parameters from the node."""
+    try:
+        from algorand_client import get_algod_client
+        client = get_algod_client()
+        sp = client.suggested_params()
+        return _resp({
+            "genesis_id": sp.gen,
+            "genesis_hash": sp.gh,
+            "min_fee": sp.min_fee,
+            "first_round": sp.first
+        })
+    except Exception as e:
+        logger.error(f"Failed to fetch algod params: {e}")
+        # Fallback to testnet if algod fails
+        return _resp({
+            "genesis_id": "testnet-v1.0",
+            "genesis_hash": "SGO1GKSzyE7IEPItTxCBywTZ6x4Wo466ZA6A6H3WjSo=",
+            "min_fee": 1000,
+            "first_round": 1
+        })
 
 @router.post("/auth/verify")
 async def auth_verify(req: VerifyAuthRequest, db: Session = Depends(get_db)):
@@ -54,7 +66,7 @@ async def auth_verify(req: VerifyAuthRequest, db: Session = Depends(get_db)):
     if not user:
         user = User(
             wallet_address=req.wallet_address,
-            role=UserRole(req.role.value),
+            role=UserRole(req.role.value.upper()),
         )
         db.add(user)
         db.commit()

@@ -82,7 +82,7 @@ async def submit_work(
     print(f"[VORTEX-PIPELINE] Processing Bounty: {bounty_id}, AssetType: {asset_type_str}")
     
     if asset_type_str == "code":
-        static_result = static_analysis(req.artifact)
+        static_result = await asyncio.to_thread(static_analysis, req.artifact)
     else:
         static_result = {
             "pass": True, 
@@ -106,7 +106,7 @@ async def submit_work(
 
     # Layer 2: Sandbox (Code only)
     if asset_type_str == "code":
-        sandbox_result = run_in_sandbox(req.artifact, bounty.verification_criteria)
+        sandbox_result = await asyncio.to_thread(run_in_sandbox, req.artifact, bounty.verification_criteria)
         print(f"[SANDBOX-DEBUG] pass={sandbox_result['pass']}, docker_error={sandbox_result.get('docker_error')}, timeout={sandbox_result.get('timeout')}")
         print(f"[SANDBOX-DEBUG] FULL LOGS:\n{sandbox_result.get('logs', '')}")
         submission.sandbox_passed = sandbox_result["pass"]
@@ -183,8 +183,9 @@ async def submit_work(
 
     # Layer 5: Professional Mastery NFT & IPFS Pinning
     try:
-        ipfs_cid = ipfs.generate_ipfs_cid(req.artifact)
-        nft_result = mint_mastery_nft(
+        ipfs_cid = await asyncio.to_thread(ipfs.generate_ipfs_cid, req.artifact)
+        nft_result = await asyncio.to_thread(
+            mint_mastery_nft,
             solver_address=user["wallet"],
             bounty_title=bounty.title,
             ipfs_cid=ipfs_cid
@@ -310,12 +311,12 @@ async def execute_dry_run(req: DryRunRequest, user: dict = Depends(require_selle
     start = time.time()
     
     # 1. Static AST pass
-    static_result = static_analysis(req.artifact)
+    static_result = await asyncio.to_thread(static_analysis, req.artifact)
     if not static_result["pass"]:
         return {"success": False, "status": "failed", "step": "Static Analysis", "logs": static_result.get("logs", [])}
         
     # 2. Docker Sandbox pass
-    sandbox_result = run_in_sandbox(req.artifact, req.verification_criteria)
+    sandbox_result = await asyncio.to_thread(run_in_sandbox, req.artifact, req.verification_criteria)
     
     elapsed = round(time.time() - start, 2)
     return {

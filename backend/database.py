@@ -26,8 +26,8 @@ Base = declarative_base()
 # ═══════════════════════════════════════════════
 
 class UserRole(str, PyEnum):
-    BUYER = "buyer"
-    SELLER = "seller"
+    BUYER = "BUYER"
+    SELLER = "SELLER"
 
 
 class BountyStatus(str, PyEnum):

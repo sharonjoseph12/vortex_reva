@@ -52,12 +52,12 @@ export default function LandingPage() {
     }
   }
 
-  async function handleWalletConnect(provider: 'pera' | 'defly') {
+  async function handleWalletConnect(provider: 'pera' | 'defly', forceNew = false) {
     setLoading(true);
     setError('');
     try {
-      if (provider === 'pera') await connectPeraWallet(selectedRole);
-      else await connectDeflyWallet(selectedRole);
+      if (provider === 'pera') await connectPeraWallet(selectedRole, forceNew);
+      else await connectDeflyWallet(selectedRole, forceNew);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Wallet connection failed');
       setLoading(false);
@@ -144,28 +144,43 @@ export default function LandingPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <button
                 className="btn btn-primary btn-lg"
-                onClick={handleDemoLogin}
+                onClick={() => handleWalletConnect('pera', true)}
                 disabled={loading}
-                style={{ width: '100%' }}
+                style={{ 
+                  width: '100%', 
+                  padding: '16px', 
+                  fontSize: '1.1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '12px',
+                  background: 'linear-gradient(135deg, var(--accent-primary) 0%, #000 100%)',
+                  boxShadow: '0 4px 20px rgba(20, 168, 0, 0.3)'
+                }}
               >
-                {loading ? 'Entering Proxy...' : `Continue as ${selectedRole === 'buyer' ? 'Buyer' : 'Partner'}`}
+                {loading ? 'Awaiting Scan...' : <><Wallet size={20} /> Login with Pera (New QR)</>}
               </button>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
                 <button 
-                  className="btn btn-secondary" 
-                  onClick={() => handleWalletConnect('pera')}
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleDemoLogin}
                   disabled={loading}
                 >
-                  <Wallet size={16} /> Pera
+                  Demo Bypass
                 </button>
                 <button 
-                  className="btn btn-secondary" 
-                  onClick={() => handleWalletConnect('defly')}
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleWalletConnect('defly', true)}
                   disabled={loading}
                 >
-                  <Activity size={16} /> Defly
+                  Use Defly
                 </button>
               </div>
+              
+              <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '8px' }}>
+                Secure on-chain authentication via Algorand ARC-0014
+              </p>
             </div>
 
             {isConnected && (
