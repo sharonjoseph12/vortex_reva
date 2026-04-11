@@ -32,11 +32,19 @@ async def list_disputes(db: Session = Depends(get_db)):
     items = []
     for d in disputes:
         votes = db.query(ArbiterVote).filter(ArbiterVote.dispute_id == d.id).all()
+        total_staked = sum(v.stake_algo for v in votes)
         items.append({
-            "id": d.id, "bounty_id": d.bounty_id, "status": d.status.value,
+            "id": d.id, "bounty_id": d.bounty_id, 
+            "submission_id": d.submission_id,
+            "initiator_wallet": d.initiator_wallet,
+            "buyer_claim": d.buyer_claim,
+            "seller_claim": d.seller_claim,
+            "status": d.status.value,
+            "created_at": d.created_at.isoformat() if d.created_at else None,
             "release_votes": sum(1 for v in votes if v.vote == VoteType.RELEASE),
             "refund_votes": sum(1 for v in votes if v.vote == VoteType.REFUND),
             "arbiter_count": len(votes),
+            "total_staked": total_staked,
         })
     return _resp({"disputes": items})
 
@@ -118,6 +126,11 @@ async def get_governance_earnings(user: dict = Depends(require_auth), db: Sessio
         Transaction.type.in_([TransactionType.REWARD, TransactionType.FREEZE])
     ).all()
     
+    votes = db.query(ArbiterVote).filter(ArbiterVote.voter_wallet == user["wallet"]).all()
+    total_cases = len(set(v.dispute_id for v in votes))
+    rewarded_votes = sum(1 for v in votes if v.rewarded)
+    success_rate = (rewarded_votes / total_cases * 100) if total_cases > 0 else 0
+    
     total_rewarded = sum(t.amount_algo for t in txns if t.type == TransactionType.REWARD)
     total_slashed = sum(abs(t.amount_algo) for t in txns if t.type == TransactionType.FREEZE)
     
@@ -125,6 +138,8 @@ async def get_governance_earnings(user: dict = Depends(require_auth), db: Sessio
         "total_rewarded": total_rewarded,
         "total_slashed": total_slashed,
         "net_delta": total_rewarded - total_slashed,
+        "total_cases": total_cases,
+        "success_rate": success_rate,
         "history": [{"bounty_id": t.bounty_id, "amount": t.amount_algo, "date": t.created_at.isoformat()} for t in txns]
     })
 @router.get("/disputes/{dispute_id}")

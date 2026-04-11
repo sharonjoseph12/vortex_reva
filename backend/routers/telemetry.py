@@ -30,6 +30,7 @@ async def health():
         "algorand": "connected" if check_algod_connection() else "error",
         "docker": "ready" if check_docker_available() else "error",
         "database": "connected" if check_db_health() else "error",
+        "oracle_nodes": ["node-1", "node-2", "node-3"],
         "uptime_seconds": round(time.time() - START_TIME, 1),
     })
 

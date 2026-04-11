@@ -83,10 +83,40 @@ async def auth_me(user: dict = Depends(require_auth), db: Session = Depends(get_
         "reputation_score": db_user.reputation_score,
         "total_earned": db_user.total_earned,
         "total_locked": db_user.total_locked,
+        "total_staked": db_user.total_locked,
         "tagline": db_user.tagline,
         "bio": db_user.bio,
         "github_url": db_user.github_url,
         "skills": db_user.skills or [],
+    })
+
+@router.get("/users/{wallet}/reputation")
+async def user_reputation(wallet: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.wallet_address == wallet).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    
+    passed_subs = db.query(Submission).filter(
+        Submission.seller_wallet == wallet,
+        Submission.status == SubmissionStatus.PASSED
+    ).count()
+    total_subs = db.query(Submission).filter(
+        Submission.seller_wallet == wallet
+    ).count()
+    
+    avg_settlement = db.query(func.avg(Submission.settlement_time)).filter(
+        Submission.seller_wallet == wallet,
+        Submission.status == SubmissionStatus.PASSED
+    ).scalar() or 0
+    
+    total_bounties = db.query(Bounty).filter(
+        Bounty.buyer_wallet == wallet
+    ).count() + total_subs
+    
+    return _resp({
+        "pass_rate": round((passed_subs / total_subs * 100) if total_subs > 0 else 0, 1),
+        "avg_settlement_seconds": round(float(avg_settlement), 2),
+        "total_bounties": total_bounties
     })
 
 @router.get("/users/{wallet}/profile")
@@ -124,7 +154,7 @@ async def user_profile(wallet: str, db: Session = Depends(get_db)):
     for s in passed_subs:
         portfolio.append({
             "title": s.bounty.title,
-            "url": s.artifact,
+            "url": s.artifact_url,
             "type": s.bounty.asset_type.value if hasattr(s.bounty.asset_type, 'value') else s.bounty.asset_type,
             "settled_at": s.submitted_at.isoformat() if s.submitted_at else None
         })

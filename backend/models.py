@@ -137,7 +137,9 @@ class ValidateTestsRequest(BaseModel):
 
 
 class CreateDisputeRequest(BaseModel):
-    reason: str = Field(..., min_length=10)
+    bounty_id: str = Field(..., description="Bounty to dispute")
+    submission_id: str = Field(..., description="Submission to dispute")
+    claim: str = Field(..., min_length=10, description="Dispute reason/claim")
 
 
 class CastVoteRequest(BaseModel):

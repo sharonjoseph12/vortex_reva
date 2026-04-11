@@ -5,6 +5,16 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getUserProfile, syncGithub, updateProfile } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { toast } from 'sonner';
+import { 
+  ShieldCheck, Star, Briefcase, ExternalLink, Mail, Shield,
+  MapPin, Award, ArrowLeft, Edit3, LayoutGrid, Gavel, X, Check
+} from 'lucide-react';
+import Link from 'next/link';
+import MasteryRadar from '@/components/MasteryRadar';
+import MasteryLevelBadge from '@/components/MasteryLevelBadge';
+import ExplorerLink from '@/components/ExplorerLink';
+import styles from './page.module.css';
 
 interface UserDataEnhanced {
   wallet_address: string;
@@ -22,15 +32,6 @@ interface UserDataEnhanced {
   github_url?: string;
   created_at?: string;
 }
-import { 
-  ShieldCheck, Star, Briefcase, ExternalLink, Mail, Shield,
-  MapPin, Award, ArrowLeft, Edit3, LayoutGrid, Gavel, X, Check
-} from 'lucide-react';
-import Link from 'next/link';
-import MasteryRadar from '@/components/MasteryRadar';
-import MasteryLevelBadge from '@/components/MasteryLevelBadge';
-import ExplorerLink from '@/components/ExplorerLink';
-import styles from './page.module.css';
 
 export default function ProfilePage() {
   const { wallet } = useParams();
@@ -79,14 +80,40 @@ export default function ProfilePage() {
       });
       setIsEditing(false);
       await loadProfile(wallet as string);
+      toast.success('Profile updated');
     } catch (e: any) {
-      alert(e.message || 'Update failed');
+      toast.error(e.message || 'Update failed');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return <div className="page-container"><div className="loading-pulse">Retrieving Verified Profile...</div></div>;
+  const downloadAudit = async () => {
+    if (!profile) return;
+    try {
+      setLoading(true);
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${API_URL}/governance/profiles/${profile.wallet_address}/audit`);
+      const data = await res.json();
+      
+      const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `VORTEX_AUDIT_${profile.wallet_address.slice(0, 8)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('Sovereign Audit Downloaded');
+    } catch (e) {
+      toast.error('Audit generation failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && !profile) return <div className="page-container"><div className="loading-pulse">Retrieving Verified Profile...</div></div>;
   if (!profile) return <div className="page-container">User not found.</div>;
 
   return (
@@ -118,12 +145,10 @@ export default function ProfilePage() {
               <button 
                 className="btn btn-secondary btn-sm" 
                 style={{ borderColor: 'var(--accent-secondary)', color: 'var(--accent-secondary)' }}
-                onClick={() => {
-                  const auditUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/governance/profiles/${profile.wallet_address}/audit`;
-                  window.open(auditUrl, '_blank');
-                }}
+                onClick={downloadAudit}
+                disabled={loading}
               >
-                 <Shield size={14} /> Download Sovereign Audit
+                 <Shield size={14} /> {loading ? 'Processing...' : 'Download Sovereign Audit'}
               </button>
             )}
             {isMe && (
@@ -132,9 +157,10 @@ export default function ProfilePage() {
                 onClick={async () => {
                    try {
                      await syncGithub();
-                     window.location.reload();
+                     toast.success('Portfolio synced with GitHub');
+                     setTimeout(() => window.location.reload(), 1500);
                    } catch (e) {
-                     alert('Sync failed');
+                     toast.error('Sync failed');
                    }
                 }}
               >
@@ -149,7 +175,10 @@ export default function ProfilePage() {
                 <Edit3 size={14} /> Edit Profile
               </button>
             ) : (
-              <button className="btn btn-primary btn-sm">
+              <button 
+                className="btn btn-primary btn-sm"
+                onClick={() => toast.info(`Encryption link for ${profile.wallet_address.slice(0, 8)} not yet established.`)}
+              >
                 <Mail size={14} /> Contact
               </button>
             )}

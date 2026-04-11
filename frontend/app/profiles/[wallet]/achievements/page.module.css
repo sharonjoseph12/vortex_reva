@@ -1,106 +1,116 @@
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
 .header {
-  margin-bottom: var(--space-3xl);
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.title {
-  font-size: 2.5rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  margin: 0 0 8px 0;
-}
-
-.subtitle {
-  color: var(--text-secondary);
-  font-size: 1.125rem;
-  max-width: 600px;
-}
-
-.hCard {
-  padding: var(--space-lg) var(--space-xl);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.hLabel {
-  font-size: 0.625rem;
-  font-weight: 800;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 4px;
-}
-
-.hVal {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: var(--accent-primary);
-}
-
-.controls {
-  display: flex;
-  gap: 12px;
   margin-bottom: var(--space-2xl);
 }
 
-.searchBox {
-  flex: 1;
-  background: var(--bg-secondary);
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-xl);
+}
+
+.nftCard {
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0 16px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nftCard:hover {
+  transform: translateY(-8px) scale(1.02);
+  border-color: var(--accent-primary);
+  box-shadow: 0 12px 40px rgba(0, 255, 136, 0.15);
+}
+
+.imageContainer {
+  aspect-ratio: 1;
+  background: var(--bg-tertiary);
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  position: relative;
+}
+
+.imageContainer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, var(--accent-primary-dim) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.nftCard:hover .glow {
+  opacity: 0.3;
+}
+
+.nftInfo {
+  padding: var(--space-xl);
+}
+
+.nftName {
+  font-size: 1.125rem;
+  font-weight: 800;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+
+.bountyTitle {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
+
+.date {
+  font-size: 0.75rem;
   color: var(--text-tertiary);
 }
 
-.searchInput {
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  width: 100%;
-  height: 40px;
-  outline: none;
+.verifyBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  text-decoration: none;
+  background: var(--accent-primary-dim);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  transition: all 0.2s ease;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
-  margin-bottom: var(--space-3xl);
+.verifyBtn:hover {
+  background: var(--accent-primary);
+  color: #000;
 }
 
 .empty {
-  grid-column: 1 / -1;
-  padding: 80px;
   text-align: center;
+  padding: 80px 24px;
   background: var(--bg-secondary);
-  border-radius: var(--radius-2xl);
-  border: 2px dashed var(--border-color);
-  color: var(--text-tertiary);
-}
-
-.disclaimer {
-  display: flex;
-  gap: 16px;
-  padding: 24px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  align-items: flex-start;
-}
-
-.disclaimer p {
-  font-size: 0.8125rem;
-  color: var(--text-tertiary);
-  margin: 0;
-  line-height: 1.5;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-xl);
 }

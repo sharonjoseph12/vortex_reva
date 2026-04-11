@@ -1,5 +1,3 @@
-# VORTEX Protocol — Sovereign Bounty Escrow Hub
-
 VORTEX is an elite, fault-tolerant bounty escrow system built on **Algorand**. It replaces traditional "hope-based" escrow with **Code-is-Law Enforcement** via a multi-modal AI verification pipeline and 2-of-3 Oracle consensus.
 
 ## ⚔️ The Problem
@@ -70,6 +68,3 @@ python deploy.py
 *   **App ID**: 1001
 *   **GitHub**: [sharonjoseph12/vortex_reva](https://github.com/sharonjoseph12/vortex_reva)
 *   **Submission Date**: April 11, 2026
-
----
-*Built for the [Reva] — Code is Law.*
