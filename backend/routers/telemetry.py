@@ -103,10 +103,10 @@ async def get_arbiters_pulse(db: Session = Depends(get_db)):
     for user in arbiters[:10]: # Top 10
         pulse_data.append({
             "wallet": user.wallet_address,
-            "role": str(user.role.value if hasattr(user.role, 'value') else user.role).lower(),
+            "role": str(user.role).lower(),
             "reputation_score": user.reputation_score,
             "created_at": user.created_at.isoformat() if user.created_at else None,
-            "status": "Online"
+            "status": "online"
         })
     return _resp({
         "total_arbiters": len(arbiters),
@@ -123,7 +123,8 @@ async def get_transactions(wallet: str, db: Session = Depends(get_db)):
     txns = db.query(Transaction).filter(Transaction.wallet_address == wallet).order_by(Transaction.created_at.desc()).all()
     return _resp({
         "transactions": [{
-            "id": t.id, "type": t.type, "amount": t.amount_algo, 
+            "id": t.id, "type": str(t.type).lower(), "amount": t.amount_algo, 
+            "status": str(t.status).lower() if t.status else None,
             "tx_hash": t.tx_hash, "date": t.created_at.isoformat()
         } for t in txns]
     })

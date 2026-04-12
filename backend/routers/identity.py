@@ -64,15 +64,17 @@ async def auth_verify(req: VerifyAuthRequest, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(User.wallet_address == req.wallet_address).first()
     if not user:
+        # Resolve the role string safely
+        role_val = str(req.role.value if hasattr(req.role, 'value') else req.role).upper()
         user = User(
             wallet_address=req.wallet_address,
-            role=UserRole(req.role.value.upper()),
+            role=role_val,
         )
         db.add(user)
         db.commit()
         db.refresh(user)
 
-    token = create_jwt(req.wallet_address, req.role.value)
+    token = create_jwt(req.wallet_address, str(req.role.value if hasattr(req.role, 'value') else req.role).lower())
     return _resp({
         "token": token,
         "user": {
