@@ -25,82 +25,79 @@ Base = declarative_base()
 # ENUMS
 # ═══════════════════════════════════════════════
 
-class UserRole(str, PyEnum):
-    BUYER = "buyer"
-    SELLER = "seller"
+class CaseInsensitiveEnum(str, PyEnum):
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            for member in cls:
+                if member.value.upper() == value.upper():
+                    return member
+        return None
 
+class UserRole(CaseInsensitiveEnum):
+    BUYER = "BUYER"
+    SELLER = "SELLER"
 
-class BountyStatus(str, PyEnum):
-    ACTIVE = "active"
-    PENDING = "pending"
-    SETTLED = "settled"
-    DISPUTED = "disputed"
-    FROZEN = "frozen"
-    EXPIRED = "expired"
+class BountyStatus(CaseInsensitiveEnum):
+    ACTIVE = "ACTIVE"
+    PENDING = "PENDING"
+    SETTLED = "SETTLED"
+    DISPUTED = "DISPUTED"
+    FROZEN = "FROZEN"
+    EXPIRED = "EXPIRED"
 
+class Difficulty(CaseInsensitiveEnum):
+    EASY = "EASY"
+    MEDIUM = "MEDIUM"
+    HARD = "HARD"
 
-class Difficulty(str, PyEnum):
-    EASY = "easy"
-    MEDIUM = "medium"
-    HARD = "hard"
+class Category(CaseInsensitiveEnum):
+    PYTHON = "PYTHON"
+    JAVASCRIPT = "JAVASCRIPT"
+    RUST = "RUST"
+    AI_ML = "AI_ML"
+    DESIGN = "DESIGN"
+    MARKETING = "MARKETING"
+    VIDEO = "VIDEO"
+    TRANSLATION = "TRANSLATION"
+    DOCUMENT = "DOCUMENT"
+    LEGAL = "LEGAL"
+    ADMIN = "ADMIN"
+    OTHER = "OTHER"
 
+class AssetType(CaseInsensitiveEnum):
+    CODE = "CODE"
+    MEDIA = "MEDIA"
+    DOCUMENT = "DOCUMENT"
+    CONTRACT = "CONTRACT"
+    GENERAL = "GENERAL"
 
-class Category(str, PyEnum):
-    # Technical
-    PYTHON = "python"
-    JAVASCRIPT = "javascript"
-    RUST = "rust"
-    AI_ML = "ai_ml"
-    # Creative / Professional
-    DESIGN = "design"
-    MARKETING = "marketing"
-    VIDEO = "video"
-    TRANSLATION = "translation"
-    # Business / Operations
-    DOCUMENT = "document"
-    LEGAL = "legal"
-    ADMIN = "admin"
-    OTHER = "other"
+class SubmissionStatus(CaseInsensitiveEnum):
+    PENDING = "PENDING"
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    FROZEN = "FROZEN"
 
+class VoteType(CaseInsensitiveEnum):
+    RELEASE = "RELEASE"
+    REFUND = "REFUND"
 
-class AssetType(str, PyEnum):
-    CODE = "code"
-    MEDIA = "media"
-    DOCUMENT = "document"
-    CONTRACT = "contract"
-    GENERAL = "general"
+class DisputeStatus(CaseInsensitiveEnum):
+    ACTIVE = "ACTIVE"
+    RESOLVED = "RESOLVED"
 
+class TransactionType(CaseInsensitiveEnum):
+    LOCK = "LOCK"
+    PAYOUT = "PAYOUT"
+    REFUND = "REFUND"
+    STAKE = "STAKE"
+    FREEZE = "FREEZE"
+    REWARD = "REWARD"
 
-class SubmissionStatus(str, PyEnum):
-    PENDING = "pending"
-    PASSED = "passed"
-    FAILED = "failed"
-    FROZEN = "frozen"
-
-
-class VoteType(str, PyEnum):
-    RELEASE = "release"
-    REFUND = "refund"
-
-
-class DisputeStatus(str, PyEnum):
-    ACTIVE = "active"
-    RESOLVED = "resolved"
-
-
-class TransactionType(str, PyEnum):
-    LOCK = "lock"
-    PAYOUT = "payout"
-    REFUND = "refund"
-    STAKE = "stake"
-    FREEZE = "freeze"
-    REWARD = "reward"
-
-
-class TransactionStatus(str, PyEnum):
-    CONFIRMED = "confirmed"
-    PENDING = "pending"
-    FAILED = "failed"
+class TransactionStatus(CaseInsensitiveEnum):
+    CONFIRMED = "CONFIRMED"
+    PENDING = "PENDING"
+    FAILED = "FAILED"
 
 
 # ═══════════════════════════════════════════════
@@ -124,7 +121,7 @@ class User(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     wallet_address = Column(String(58), unique=True, nullable=False, index=True)
-    role = Column(Enum(UserRole), nullable=False)
+    role = Column(String(50), nullable=False)
     
     # Profile Data
     tagline = Column(String(255), nullable=True)
@@ -155,15 +152,15 @@ class Bounty(Base):
     description = Column(Text, nullable=False)
     requirements = Column(Text, nullable=False)
     verification_criteria = Column(Text, nullable=True)
-    asset_type = Column(Enum(AssetType), default=AssetType.CODE)
+    asset_type = Column(String(50), default=AssetType.CODE)
     generated_tests = Column(Boolean, default=False)
     reward_algo = Column(Float, nullable=False)
     buyer_wallet = Column(String(58), ForeignKey("users.wallet_address"), nullable=False, index=True)
     developer_wallet = Column(String(58), ForeignKey("users.wallet_address"), nullable=True, index=True)
     app_id = Column(Integer, nullable=True)
-    status = Column(Enum(BountyStatus), default=BountyStatus.ACTIVE, index=True)
-    difficulty = Column(Enum(Difficulty), default=Difficulty.MEDIUM)
-    category = Column(Enum(Category), default=Category.PYTHON)
+    status = Column(String(50), default=BountyStatus.ACTIVE, index=True)
+    difficulty = Column(String(50), default=Difficulty.MEDIUM)
+    category = Column(String(50), default=Category.PYTHON)
     deadline = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=utcnow)
     settled_at = Column(DateTime, nullable=True)
@@ -192,7 +189,7 @@ class Submission(Base):
     sandbox_logs = Column(JSON, nullable=True)
     jury_logs = Column(JSON, nullable=True)
     settlement_time = Column(Float, nullable=True)
-    status = Column(Enum(SubmissionStatus), default=SubmissionStatus.PENDING, index=True)
+    status = Column(String(50), default=SubmissionStatus.PENDING, index=True)
     tx_id = Column(String(64), nullable=True)
     
     # Forensic Behavioral Metadata (Typed completion signals)
@@ -243,7 +240,7 @@ class OracleVote(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     bounty_id = Column(String(36), ForeignKey("bounties.id"), nullable=False, index=True)
     oracle_node = Column(Integer, nullable=False)  # 1, 2, or 3
-    vote = Column(Enum(VoteType), nullable=False)
+    vote = Column(String(50), nullable=False)
     tx_id = Column(String(64), nullable=True)
     voted_at = Column(DateTime, default=utcnow)
 
@@ -257,10 +254,10 @@ class Dispute(Base):
     initiator_wallet = Column(String(58), nullable=False)
     buyer_claim = Column(Text, nullable=True)
     seller_claim = Column(Text, nullable=True)
-    status = Column(Enum(DisputeStatus), default=DisputeStatus.ACTIVE, index=True)
+    status = Column(String(50), default=DisputeStatus.ACTIVE, index=True)
     created_at = Column(DateTime, default=utcnow)
     resolved_at = Column(DateTime, nullable=True)
-    resolution = Column(Enum(VoteType), nullable=True)
+    resolution = Column(String(50), nullable=True)
     arbiter_count = Column(Integer, default=0)
     case_file_cid = Column(String(64), nullable=True)
 
@@ -275,7 +272,7 @@ class ArbiterVote(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     dispute_id = Column(String(36), ForeignKey("disputes.id"), nullable=False, index=True)
     voter_wallet = Column(String(58), nullable=False)
-    vote = Column(Enum(VoteType), nullable=False)
+    vote = Column(String(50), nullable=False)
     stake_algo = Column(Float, nullable=False)
     voted_at = Column(DateTime, default=utcnow)
     rewarded = Column(Boolean, default=False)
@@ -289,10 +286,10 @@ class Transaction(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     wallet_address = Column(String(58), nullable=False, index=True)
-    type = Column(Enum(TransactionType), nullable=False)
+    type = Column(String(50), nullable=False)
     amount_algo = Column(Float, nullable=False)
     tx_hash = Column(String(64), unique=True, nullable=False)
-    status = Column(Enum(TransactionStatus), default=TransactionStatus.PENDING)
+    status = Column(String(50), default="PENDING")
     created_at = Column(DateTime, default=utcnow)
     bounty_id = Column(String(36), nullable=True)
 

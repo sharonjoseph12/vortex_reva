@@ -115,10 +115,12 @@ export default function ProfileGate({ children }: { children: React.ReactNode })
           <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
               <div>
-                <label className="input-label" style={{ marginBottom: '10px', display: 'block', color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 800 }}>
+                <label htmlFor="tagline" className="input-label" style={{ marginBottom: '10px', display: 'block', color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 800 }}>
                   Forensic Tagline <span style={{ color: 'var(--accent-primary)' }}>*</span>
                 </label>
                 <input
+                  id="tagline"
+                  name="tagline"
                   className="input"
                   style={{ background: 'rgba(255,255,255,0.03)', fontSize: '1.1rem', padding: '16px' }}
                   value={form.tagline}
@@ -131,10 +133,12 @@ export default function ProfileGate({ children }: { children: React.ReactNode })
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                 <div>
-                  <label className="input-label" style={{ marginBottom: '10px', display: 'block', color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 800 }}>
+                  <label htmlFor="skills" className="input-label" style={{ marginBottom: '10px', display: 'block', color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 800 }}>
                     Skill Nodes
                   </label>
                   <input
+                    id="skills"
+                    name="skills"
                     className="input"
                     style={{ background: 'rgba(255,255,255,0.03)', padding: '12px' }}
                     value={form.skills}
@@ -153,10 +157,12 @@ export default function ProfileGate({ children }: { children: React.ReactNode })
               </div>
 
               <div>
-                <label className="input-label" style={{ marginBottom: '10px', display: 'block', color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 800 }}>
+                <label htmlFor="bio" className="input-label" style={{ marginBottom: '10px', display: 'block', color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 800 }}>
                   Mission Bio
                 </label>
                 <textarea
+                  id="bio"
+                  name="bio"
                   className="textarea"
                   style={{ background: 'rgba(255,255,255,0.03)', minHeight: '100px', padding: '16px' }}
                   value={form.bio}

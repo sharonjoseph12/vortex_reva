@@ -34,16 +34,28 @@ async def auth_nonce_post(req: NonceRequest):
     nonce = generate_nonce(req.wallet_address)
     return _resp({"nonce": nonce})
 
-@router.get("/auth/nonce")
-async def auth_nonce_get(wallet: Optional[str] = Query(None)):
-    if not wallet:
-        return _resp(error="Missing 'wallet' query parameter (58-character Algorand address required)")
-    
-    if len(wallet) != 58:
-        return _resp(error="Invalid wallet address length. Must be exactly 58 characters.")
-        
-    nonce = generate_nonce(wallet)
-    return _resp({"nonce": nonce})
+@router.get("/auth/params")
+async def auth_params():
+    """Fetch live Algorand suggested parameters from the node."""
+    try:
+        from algorand_client import get_algod_client
+        client = get_algod_client()
+        sp = client.suggested_params()
+        return _resp({
+            "genesis_id": sp.gen,
+            "genesis_hash": sp.gh,
+            "min_fee": sp.min_fee,
+            "first_round": sp.first
+        })
+    except Exception as e:
+        logger.error(f"Failed to fetch algod params: {e}")
+        # Fallback to testnet if algod fails
+        return _resp({
+            "genesis_id": "testnet-v1.0",
+            "genesis_hash": "SGO1GKSzyE7IEPItTxCBywTZ6x4Wo466ZA6A6H3WjSo=",
+            "min_fee": 1000,
+            "first_round": 1
+        })
 
 @router.post("/auth/verify")
 async def auth_verify(req: VerifyAuthRequest, db: Session = Depends(get_db)):
@@ -52,20 +64,22 @@ async def auth_verify(req: VerifyAuthRequest, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(User.wallet_address == req.wallet_address).first()
     if not user:
+        # Resolve the role string safely
+        role_val = str(req.role.value if hasattr(req.role, 'value') else req.role).upper()
         user = User(
             wallet_address=req.wallet_address,
-            role=UserRole(req.role.value),
+            role=role_val,
         )
         db.add(user)
         db.commit()
         db.refresh(user)
 
-    token = create_jwt(req.wallet_address, req.role.value)
+    token = create_jwt(req.wallet_address, str(req.role.value if hasattr(req.role, 'value') else req.role).lower())
     return _resp({
         "token": token,
         "user": {
             "wallet_address": user.wallet_address,
-            "role": user.role.value if hasattr(user.role, 'value') else user.role,
+            "role": str(user.role.value if hasattr(user.role, 'value') else user.role).lower(),
             "reputation_score": user.reputation_score,
             "created_at": user.created_at.isoformat() if user.created_at else None,
         },
@@ -79,7 +93,7 @@ async def auth_me(user: dict = Depends(require_auth), db: Session = Depends(get_
         
     return _resp({
         "wallet_address": db_user.wallet_address,
-        "role": db_user.role.value if hasattr(db_user.role, 'value') else db_user.role,
+        "role": str(db_user.role.value if hasattr(db_user.role, 'value') else db_user.role).lower(),
         "reputation_score": db_user.reputation_score,
         "total_earned": db_user.total_earned,
         "total_locked": db_user.total_locked,
@@ -165,7 +179,7 @@ async def user_profile(wallet: str, db: Session = Depends(get_db)):
 
     return _resp({
         "wallet_address": user.wallet_address,
-        "role": user.role.value if hasattr(user.role, 'value') else user.role,
+        "role": str(user.role.value if hasattr(user.role, 'value') else user.role).lower(),
         "tagline": user.tagline,
         "bio": user.bio,
         "reputation_score": user.reputation_score,

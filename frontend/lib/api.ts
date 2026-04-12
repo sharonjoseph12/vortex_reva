@@ -180,6 +180,15 @@ export async function requestNonce(wallet: string) {
   });
 }
 
+export async function requestAuthParams() {
+  return apiFetch<{
+    genesis_id: string;
+    genesis_hash: string;
+    min_fee: number;
+    first_round: number;
+  }>('/identity/auth/params');
+}
+
 export async function verifyAuth(
   wallet: string,
   nonce: string,

@@ -193,8 +193,10 @@ export default function CreateBountyPage() {
           </div>
 
           <div className={styles.field}>
-            <label className="input-label">Project Title</label>
+            <label htmlFor="bounty-title" className="input-label">Project Title</label>
             <input
+              id="bounty-title"
+              name="bounty-title"
               className="input"
               value={form.title}
               onChange={(e) => update('title', e.target.value)}
@@ -205,8 +207,10 @@ export default function CreateBountyPage() {
 
           <div className={styles.row}>
             <div className={styles.field}>
-              <label className="input-label">Industry Category</label>
+              <label htmlFor="industry-category" className="input-label">Industry Category</label>
               <select 
+                id="industry-category"
+                name="industry-category"
                 className="select" 
                 value={form.category} 
                 onChange={(e) => update('category', e.target.value)}
@@ -232,8 +236,8 @@ export default function CreateBountyPage() {
               </select>
             </div>
             <div className={styles.field}>
-              <label className="input-label">Estimated Difficulty</label>
-              <select className="select" value={form.difficulty} onChange={(e) => update('difficulty', e.target.value)}>
+              <label htmlFor="estimated-difficulty" className="input-label">Estimated Difficulty</label>
+              <select id="estimated-difficulty" name="estimated-difficulty" className="select" value={form.difficulty} onChange={(e) => update('difficulty', e.target.value)}>
                 <option value="easy">Easy (Quick Task)</option>
                 <option value="medium">Medium (Standard)</option>
                 <option value="hard">Hard (Complex Architecture)</option>
@@ -242,8 +246,10 @@ export default function CreateBountyPage() {
           </div>
 
           <div className={styles.field}>
-            <label className="input-label">Detailed Brief & Context</label>
+            <label htmlFor="detailed-brief" className="input-label">Detailed Brief & Context</label>
             <textarea
+              id="detailed-brief"
+              name="detailed-brief"
               className="textarea"
               value={form.description}
               onChange={(e) => update('description', e.target.value)}
@@ -255,9 +261,11 @@ export default function CreateBountyPage() {
 
           <div className={styles.row}>
             <div className={styles.field}>
-              <label className="input-label">Reward (ALGO)</label>
+              <label htmlFor="reward-algo" className="input-label">Reward (ALGO)</label>
               <div style={{ position: 'relative' }}>
                 <input
+                  id="reward-algo"
+                  name="reward-algo"
                   className="input"
                   type="number"
                   step="0.1"
@@ -272,8 +280,10 @@ export default function CreateBountyPage() {
               </div>
             </div>
             <div className={styles.field}>
-              <label className="input-label">Deadline</label>
+              <label htmlFor="bounty-deadline" className="input-label">Deadline</label>
               <input
+                id="bounty-deadline"
+                name="bounty-deadline"
                 className="input"
                 type="datetime-local"
                 value={form.deadline}
@@ -286,7 +296,7 @@ export default function CreateBountyPage() {
           {/* Verification Logic */}
           <div className={styles.verificationSection}>
             <div className={styles.fieldHeader}>
-              <label className="input-label" style={{ marginBottom: 0 }}>
+              <label htmlFor="verification-criteria" className="input-label" style={{ marginBottom: 0 }}>
                 {form.asset_type === 'code' ? 'Verification Tests (Pytest)' : 'Evaluation Criteria (AI Vision/RAG)'}
               </label>
               {form.asset_type === 'code' && (
@@ -302,6 +312,8 @@ export default function CreateBountyPage() {
               )}
             </div>
             <textarea
+              id="verification-criteria"
+              name="verification-criteria"
               className="textarea"
               value={form.verification_criteria}
               onChange={(e) => update('verification_criteria', e.target.value)}

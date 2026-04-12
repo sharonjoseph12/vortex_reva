@@ -1,0 +1,29 @@
+# Environments
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+venv/
+env/
+
+# Node
+node_modules/
+.next/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+
+# Database
+*.db
+!contracts/
+!frontend/
+!backend/

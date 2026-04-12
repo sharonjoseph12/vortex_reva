@@ -39,7 +39,7 @@ async def list_disputes(db: Session = Depends(get_db)):
             "initiator_wallet": d.initiator_wallet,
             "buyer_claim": d.buyer_claim,
             "seller_claim": d.seller_claim,
-            "status": d.status.value,
+            "status": str(d.status.value if hasattr(d.status, 'value') else d.status).lower(),
             "created_at": d.created_at.isoformat() if d.created_at else None,
             "release_votes": sum(1 for v in votes if v.vote == VoteType.RELEASE),
             "refund_votes": sum(1 for v in votes if v.vote == VoteType.REFUND),
@@ -155,13 +155,16 @@ async def get_dispute(dispute_id: str, db: Session = Depends(get_db)):
     return _resp({
         "id": d.id, "bounty_id": d.bounty_id, "submission_id": d.submission_id,
         "initiator_wallet": d.initiator_wallet, "buyer_claim": d.buyer_claim,
-        "seller_claim": d.seller_claim, "status": d.status.value,
+        "seller_claim": d.seller_claim, 
+        "status": str(d.status.value if hasattr(d.status, 'value') else d.status).lower(),
         "created_at": d.created_at.isoformat() if d.created_at else None,
         "submission_artifact": submission.artifact_url if submission else None,
         "forensic_report": submission.forensic_report if submission else None,
         "case_file_cid": d.case_file_cid,
         "votes": [{
-            "voter": v.voter_wallet, "vote": v.vote.value, "stake": v.stake_algo
+            "voter": v.voter_wallet, 
+            "vote": str(v.vote.value if hasattr(v.vote, 'value') else v.vote).lower(), 
+            "stake": v.stake_algo
         } for v in votes]
     })
 
@@ -200,7 +203,7 @@ async def bundle_dispute_evidence(dispute_id: str, db: Session):
         "vortex_audit_v1": {
             "dispute_id": d.id,
             "resolved_at": d.resolved_at.isoformat() if d.resolved_at else None,
-            "resolution": d.resolution.value if d.resolution else None,
+            "resolution": str(d.resolution.value if hasattr(d.resolution, 'value') else d.resolution).lower() if d.resolution else None,
             "claims": {
                 "buyer": d.buyer_claim,
                 "seller": d.seller_claim
@@ -327,7 +330,7 @@ async def vote_dispute(
 
         await emit_pulse_event("GOVERNANCE_RESOLVED", {
             "dispute_id": dispute_id, 
-            "resolution": majority.value,
+            "resolution": str(majority.value if hasattr(majority, 'value') else majority).lower(),
             "bounty_id": bounty.id if bounty else None
         })
 
