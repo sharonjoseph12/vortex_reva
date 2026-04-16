@@ -196,7 +196,7 @@ async def refine_requirements(description: str, requirements: str) -> dict:
     try:
         prompt = f"Description: {description}\nCurrent Requirements: {requirements}"
         resp = await client.aio.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction="""You are the Sovereign AI Scope Refiner. 
@@ -216,7 +216,7 @@ async def summarize_criteria(criteria: str) -> list:
     """Summarize verification code into human logic constraints."""
     try:
         resp = await client.aio.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=f"Summarize these pytest checks into 3-5 bullet points for a developer:\n\n{criteria}",
             config=types.GenerateContentConfig(
                 system_instruction="Return ONLY a JSON array of strings. No markdown.",
@@ -234,7 +234,7 @@ async def analyze_failure(code: str, tests: str, logs: str) -> dict:
     try:
         prompt = f"Failed Code:\n{code}\n\nTests:\n{tests}\n\nExecution Logs:\n{logs}"
         resp = await client.aio.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction="""You are the Sovereign Forensic Analyst.

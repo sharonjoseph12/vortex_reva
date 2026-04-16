@@ -5,7 +5,6 @@ SQLAlchemy ORM with SQLite. Expanded for Upwork+ functionality.
 """
 
 import uuid
-import json
 import os
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
@@ -13,7 +12,7 @@ from dotenv import load_dotenv
 
 from sqlalchemy import (
     create_engine, Column, String, Text, Float, Integer, Boolean,
-    DateTime, JSON, ForeignKey, Index, Enum, event
+    DateTime, JSON, ForeignKey, event, Numeric
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import StaticPool
@@ -132,8 +131,8 @@ class User(Base):
     
     # Stats
     reputation_score = Column(Float, default=0.0)
-    total_earned = Column(Float, default=0.0)
-    total_locked = Column(Float, default=0.0)
+    total_earned = Column(Numeric(20, 6), default=0.0)
+    total_locked = Column(Numeric(20, 6), default=0.0)
     
     created_at = Column(DateTime, default=utcnow)
     last_active = Column(DateTime, default=utcnow, onupdate=utcnow)
@@ -154,7 +153,7 @@ class Bounty(Base):
     verification_criteria = Column(Text, nullable=True)
     asset_type = Column(String(50), default=AssetType.CODE)
     generated_tests = Column(Boolean, default=False)
-    reward_algo = Column(Float, nullable=False)
+    reward_algo = Column(Numeric(20, 6), nullable=False)
     buyer_wallet = Column(String(58), ForeignKey("users.wallet_address"), nullable=False, index=True)
     developer_wallet = Column(String(58), ForeignKey("users.wallet_address"), nullable=True, index=True)
     app_id = Column(Integer, nullable=True)
@@ -279,7 +278,7 @@ class ArbiterVote(Base):
     dispute_id = Column(String(36), ForeignKey("disputes.id"), nullable=False, index=True)
     voter_wallet = Column(String(58), nullable=False)
     vote = Column(String(50), nullable=False)
-    stake_algo = Column(Float, nullable=False)
+    stake_algo = Column(Numeric(20, 6), nullable=False)
     voted_at = Column(DateTime, default=utcnow)
     rewarded = Column(Boolean, default=False)
 
@@ -293,7 +292,7 @@ class Transaction(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     wallet_address = Column(String(58), nullable=False, index=True)
     type = Column(String(50), nullable=False)
-    amount_algo = Column(Float, nullable=False)
+    amount_algo = Column(Numeric(20, 6), nullable=False)
     tx_hash = Column(String(64), unique=True, nullable=False)
     status = Column(String(50), default="PENDING")
     created_at = Column(DateTime, default=utcnow)

@@ -9,14 +9,11 @@ import os
 import time
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional
-
+from algosdk import encoding
+import base64
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError, ExpiredSignatureError
-from algosdk import encoding, mnemonic
-from algosdk.transaction import wait_for_confirmation
-import hashlib
 import base64
 import redis
 import logging
@@ -27,8 +24,10 @@ load_dotenv()
 logger = logging.getLogger("vortex.auth")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "CHANGE-ME-32-CHAR-RANDOM-STRING!!")
+if SECRET_KEY == "CHANGE-ME-32-CHAR-RANDOM-STRING!!":
+    logger.warning("⚠ SECRET_KEY is using insecure default — set a strong key in .env")
 ALGORITHM = "HS256"
-TOKEN_EXPIRE_HOURS = 24
+TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(24 * 60))) // 60
 
 security = HTTPBearer()
 
@@ -37,14 +36,37 @@ security = HTTPBearer()
 # ═══════════════════════════════════════════════
 
 NONCE_TTL_SECONDS = 300  # 5 minutes
-_nonce_store = {}
+
+# Redis-backed nonce store (multi-worker safe).
+# Falls back to in-memory if Redis is unavailable (local dev without Redis).
+_redis_client = None
+_nonce_store = {}  # fallback
+
+def _get_redis():
+    global _redis_client
+    if _redis_client is not None:
+        return _redis_client
+    redis_url = os.getenv("REDIS_URL", "")
+    if not redis_url:
+        return None
+    try:
+        r = redis.from_url(redis_url, socket_connect_timeout=1, decode_responses=True)
+        r.ping()
+        _redis_client = r
+        return r
+    except Exception:
+        return None
 
 
 def generate_nonce(wallet_address: str) -> str:
-    """Generate a random 32-byte hex nonce and store in-memory with TTL."""
+    """Generate a random 32-byte hex nonce and store with TTL."""
     nonce = secrets.token_hex(32)
     key = f"auth_nonce:{wallet_address}"
-    _nonce_store[key] = {"nonce": nonce, "expires": time.time() + NONCE_TTL_SECONDS}
+    r = _get_redis()
+    if r:
+        r.setex(key, NONCE_TTL_SECONDS, nonce)
+    else:
+        _nonce_store[key] = {"nonce": nonce, "expires": time.time() + NONCE_TTL_SECONDS}
     return nonce
 
 
@@ -63,13 +85,20 @@ def verify_algo_signature(wallet_address: str, nonce: str, stxn_b64: str) -> boo
 
     # 1. Check nonce
     key = f"auth_nonce:{wallet_address}"
-    nonce_entry = _nonce_store.get(key)
-    if not nonce_entry or time.time() > nonce_entry["expires"]:
-        logger.warning(f"[VERIFY] No nonce or expired for wallet: {wallet_address}")
-        return False
-    if nonce_entry["nonce"] != nonce:
-        logger.warning(f"[VERIFY] Nonce mismatch for wallet: {wallet_address}")
-        return False
+    r = _get_redis()
+    if r:
+        stored_nonce = r.get(key)
+        if not stored_nonce or stored_nonce != nonce:
+            logger.warning(f"[VERIFY] No nonce or mismatch for wallet: {wallet_address}")
+            return False
+    else:
+        nonce_entry = _nonce_store.get(key)
+        if not nonce_entry or time.time() > nonce_entry["expires"]:
+            logger.warning(f"[VERIFY] No nonce or expired for wallet: {wallet_address}")
+            return False
+        if nonce_entry["nonce"] != nonce:
+            logger.warning(f"[VERIFY] Nonce mismatch for wallet: {wallet_address}")
+            return False
 
     try:
         # 2. Decode signed transaction bytes
@@ -110,7 +139,11 @@ def verify_algo_signature(wallet_address: str, nonce: str, stxn_b64: str) -> boo
         verify_key = VerifyKey(encoding.decode_address(wallet_address))
         try:
             verify_key.verify(msg_to_verify, bytes(raw_sig))
-            _nonce_store.pop(key, None)
+            # Invalidate nonce — one-time use
+            if r:
+                r.delete(key)
+            else:
+                _nonce_store.pop(key, None)
             logger.info(f"[VERIFY] Auth success: {wallet_address}")
             return True
         except BadSignatureError:

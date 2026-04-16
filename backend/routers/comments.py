@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db, Comment, Bounty, User
+from database import get_db, Comment, Bounty
 from auth import require_auth
-from typing import List
 from pydantic import BaseModel
 from datetime import datetime
 

@@ -1,16 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Optional
 import os
 from datetime import datetime, timezone
 
-from database import get_db, Bounty, Submission, BountyStatus, User
-from auth import require_buyer, require_auth
+from database import get_db, Bounty, Submission, BountyStatus
+from auth import require_buyer
 from models import (
-    CreateBountyRequest, GenerateTestsRequest, ValidateTestsRequest,
-    BountyResponse, RefineScopeRequest
+    CreateBountyRequest, GenerateTestsRequest, RefineScopeRequest
 )
-from test_generator import generate_unit_tests, refine_requirements, validate_tests as validate_test_code
+from test_generator import generate_unit_tests, refine_requirements
 
 router = APIRouter(prefix="/marketplace", tags=["Marketplace"])
 

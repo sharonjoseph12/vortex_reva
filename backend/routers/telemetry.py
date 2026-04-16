@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from sse_starlette.sse import EventSourceResponse
@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timezone
 import logging
 
-from database import get_db, check_db_health, Bounty, Transaction, Dispute, User, BountyStatus, TransactionType, DisputeStatus, UserRole
+from database import get_db, check_db_health, Bounty, Transaction, User, BountyStatus, TransactionType, UserRole
 from algorand_client import check_algod_connection
 from sandbox import check_docker_available
 from api.pulse import pulse_generator
@@ -37,11 +37,11 @@ def health():
 @router.get("/treasury")
 async def get_treasury_stats(db: Session = Depends(get_db)):
     settled_bounties = db.query(Bounty).filter(Bounty.status == BountyStatus.SETTLED).all()
-    total_volume = sum(b.reward_algo for b in settled_bounties)
+    total_volume = float(sum(b.reward_algo for b in settled_bounties))
     platform_fees = total_volume * 0.02
     
     rewards = db.query(Transaction).filter(Transaction.type == TransactionType.REWARD).all()
-    total_rewards = sum(t.amount_algo for t in rewards)
+    total_rewards = float(sum(t.amount_algo for t in rewards))
     
     return _resp({
         "total_volume_algo": float(total_volume),
@@ -123,7 +123,7 @@ async def get_transactions(wallet: str, db: Session = Depends(get_db)):
     txns = db.query(Transaction).filter(Transaction.wallet_address == wallet).order_by(Transaction.created_at.desc()).all()
     return _resp({
         "transactions": [{
-            "id": t.id, "type": str(t.type).lower(), "amount": t.amount_algo, 
+            "id": t.id, "type": str(t.type).lower(), "amount_algo": float(t.amount_algo), 
             "status": str(t.status).lower() if t.status else None,
             "tx_hash": t.tx_hash, "date": t.created_at.isoformat()
         } for t in txns]

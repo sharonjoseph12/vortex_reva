@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Optional, List, Any, Dict
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ═══════════════════════════════════════════════
@@ -79,27 +79,41 @@ class NonceRequest(BaseModel):
 
 
 class VerifyAuthRequest(BaseModel):
-    wallet_address: str = Field(..., description="Algorand wallet address")
-    nonce: str = Field(..., description="Nonce from /auth/nonce")
-    signature: str = Field(..., description="Base64-encoded signature from Pera Wallet")
+    wallet_address: str = Field(..., description="Algorand wallet address", min_length=58, max_length=58)
+    nonce: str = Field(..., description="Nonce from /auth/nonce", min_length=64, max_length=64)
+    signature: str = Field(..., description="Base64-encoded signature from Pera Wallet", max_length=4096)
     role: RoleEnum = Field(..., description="User role selection")
 
 
 class UpdateProfileRequest(BaseModel):
     tagline: Optional[str] = Field(None, max_length=100)
     bio: Optional[str] = Field(None, max_length=1000)
-    skills: Optional[List[str]] = None
-    github_url: Optional[str] = None
-    portfolio_items: Optional[List[Dict[str, str]]] = None # List of {title, url, type}
+    skills: Optional[List[str]] = Field(None, max_length=30)  # max 30 skills
+    github_url: Optional[str] = Field(None, max_length=255)
+    portfolio_items: Optional[List[Dict[str, str]]] = Field(None, max_length=20)
+
+    @field_validator("github_url")
+    @classmethod
+    def validate_github_url(cls, v):
+        if v and not (v.startswith("https://github.com/") or v.startswith("https://www.github.com/")):
+            raise ValueError("github_url must be a valid GitHub URL")
+        return v
+
+    @field_validator("skills")
+    @classmethod
+    def validate_skills(cls, v):
+        if v:
+            return [s[:50] for s in v]  # cap each skill at 50 chars
+        return v
 
 
 class CreateBountyRequest(BaseModel):
     title: str = Field(..., description="Bounty title", min_length=5, max_length=255)
-    description: str = Field(..., description="Detailed bounty description")
-    requirements: str = Field(..., description="Technical requirements for the solution")
-    verification_criteria: Optional[str] = Field(None, description="Pytest code or subjective acceptance criteria")
+    description: str = Field(..., description="Detailed bounty description", max_length=10000)
+    requirements: str = Field(..., description="Technical requirements for the solution", max_length=10000)
+    verification_criteria: Optional[str] = Field(None, description="Pytest code or subjective acceptance criteria", max_length=20000)
     asset_type: AssetType = Field(AssetType.CODE, description="Expected asset format")
-    reward_algo: float = Field(..., description="Reward amount in ALGO", gt=0)
+    reward_algo: float = Field(..., description="Reward amount in ALGO", gt=0, le=1_000_000)
     deadline: datetime = Field(..., description="Bounty expiry datetime")
     difficulty: DifficultyEnum = Field(DifficultyEnum.MEDIUM, description="Task difficulty")
     category: CategoryEnum = Field(CategoryEnum.PYTHON, description="Task category")
@@ -121,8 +135,9 @@ class RefineScopeRequest(BaseModel):
     requirements: str
 
 class SubmitWorkRequest(BaseModel):
-    artifact: str = Field(..., description="Solution source code or URL to media blob")
-    developer_address: str = Field(..., description="Developer wallet for payout")
+    # 500KB max artifact size — prevents AI pipeline abuse with huge payloads
+    artifact: str = Field(..., description="Solution source code or URL to media blob", max_length=512_000)
+    developer_address: str = Field(..., description="Developer wallet for payout", min_length=58, max_length=58)
     behavioral_metadata: Optional[Dict[str, Any]] = None
 
 

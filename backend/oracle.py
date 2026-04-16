@@ -10,7 +10,7 @@ For production: each node runs on separate server with separate keys.
 
 import os
 import logging
-from typing import List, Optional
+from typing import List
 
 from algosdk import account, mnemonic, transaction
 from algosdk.v2client import algod

@@ -98,7 +98,6 @@ export default function VerificationTerminal({ bountyId, submissionId, active, o
         const newSteps = buildSteps(data);
         setSteps(newSteps);
 
-        // Append log lines when a new step starts
         if (data.verification_step > prevStep) {
           const stepLabels: Record<number, string> = {
             1: '> Static AST Analysis running...',
@@ -115,7 +114,6 @@ export default function VerificationTerminal({ bountyId, submissionId, active, o
         if (done && !settledRef.current) {
           settledRef.current = true;
           setSettled(true);
-          if (intervalRef.current) clearInterval(intervalRef.current);
 
           const resultLine = data.status === 'passed'
             ? `> ✓ Settlement confirmed — ${data.settlement_time?.toFixed(1) ?? '?'}s`
@@ -133,17 +131,31 @@ export default function VerificationTerminal({ bountyId, submissionId, active, o
           }
         }
       } catch {
-        // transient error — keep polling
+        // ignore
       }
     }
 
-    poll(); // immediate first poll
-    intervalRef.current = setInterval(poll, 1500);
+    poll(); // immediate first query to hydrate UI
+
+    // Enterprise WebSockets for instantaneous, database-free edge updates
+    import('@/lib/supabase').then(({ supabase }) => {
+      const channel = supabase.channel(`verification_${bountyId}`)
+        .on('broadcast', { event: '*' }, (payload: any) => {
+           // We successfully caught an edge event!
+           // Poll the DB exactly once upon trigger to hydrate the exact state securely.
+           poll();
+        })
+        .subscribe();
+      
+      intervalRef.current = channel as any; // cache the channel to unsubscribe later
+    });
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      import('@/lib/supabase').then(({ supabase }) => {
+        if (intervalRef.current) supabase.removeChannel(intervalRef.current as any);
+      });
     };
-  }, [active, submissionId]);
+  }, [active, submissionId, bountyId]);
 
   // Auto-scroll
   useEffect(() => {

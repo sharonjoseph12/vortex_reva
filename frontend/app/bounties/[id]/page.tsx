@@ -564,7 +564,7 @@ export default function BountyDetailPage() {
                       </button>
                       {s.nft_id && (
                         <a 
-                          href={s.nft_asset_url || `https://testnet.algoexplorer.io/asset/${s.nft_id}`}
+                          href={s.nft_asset_url || `https://testnet.explorer.perawallet.app/asset/${s.nft_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={styles.nftBadge}

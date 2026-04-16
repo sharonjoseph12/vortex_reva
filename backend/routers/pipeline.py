@@ -1,29 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import asyncio
 import time
-import secrets
 import logging
-import os
-from datetime import datetime, timezone
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from database import (
-    get_db, Bounty, Submission, Transaction, 
-    BountyStatus, SubmissionStatus, TransactionType, TransactionStatus
+    get_db, Bounty, Submission
 )
 from auth import require_seller, require_auth
-from algorand_client import check_algod_connection, mint_mastery_nft
 from sandbox import run_in_sandbox
-from oracle import cast_release_votes, get_oracle_consensus_status
-from security import static_analysis, advisory_audit, multimodal_eval
+from security import static_analysis
 from models import SubmitWorkRequest, EvaluateScopeRequest
-from api.pulse import emit_pulse_event
 import test_generator
-import ipfs
 
 router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
 logger = logging.getLogger("vortex.pipeline")
+limiter = Limiter(key_func=get_remote_address)
 
 @router.post("/evaluate-scope")
 async def evaluate_scope(req: EvaluateScopeRequest, user: dict = Depends(require_auth)):
@@ -38,7 +33,6 @@ async def summarize_criteria(req: SummarizeRequest, user: dict = Depends(require
     result = await test_generator.summarize_criteria(req.criteria)
     return {"success": True, "data": {"summary": result}}
 
-from worker import process_submission_task
 from supabase_client import supabase
 
 def _emit(bounty_id: str, event: dict):
@@ -50,7 +44,9 @@ def _emit(bounty_id: str, event: dict):
     )
 
 @router.post("/submit/{bounty_id}")
+@limiter.limit("5/minute")
 async def submit_work(
+    request: Request,
     bounty_id: str,
     req: SubmitWorkRequest,
     background_tasks: BackgroundTasks,
@@ -182,7 +178,8 @@ class DryRunRequest(BaseModel):
     verification_criteria: str
 
 @router.post("/dry-run")
-async def execute_dry_run(req: DryRunRequest, user: dict = Depends(require_seller)):
+@limiter.limit("10/minute")
+async def execute_dry_run(request: Request, req: DryRunRequest, user: dict = Depends(require_seller)):
     """Executes the Solver Sandbox locally without initiating an on-chain submission."""
     start = time.time()
     

@@ -10,14 +10,12 @@ Pull python:3.9-alpine on server startup.
 
 import os
 import time
-import uuid
 import shutil
 import tempfile
 import logging
-from typing import Optional
 
 import docker
-from docker.errors import ContainerError, ImageNotFound, APIError
+from docker.errors import ImageNotFound, APIError
 
 logger = logging.getLogger("vortex.sandbox")
 

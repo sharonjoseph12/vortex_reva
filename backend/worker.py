@@ -3,22 +3,20 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from celery_app import app
-from database import SessionLocal, Transaction, TransactionStatus, Bounty, Submission, BountyStatus, SubmissionStatus
+from database import SessionLocal, Transaction, TransactionStatus, Submission, BountyStatus, SubmissionStatus
 from algorand_client import (
-    check_algod_connection, mint_mastery_nft, verify_escrow_deposit, get_transaction_info
+    mint_mastery_nft, verify_escrow_deposit, get_transaction_info
 )
 from sandbox import run_in_sandbox
 from oracle import cast_release_votes
 from security import static_analysis, advisory_audit, multimodal_eval
 from api.pulse import emit_pulse_event
-from ipfs import upload_to_vortex_storage, generate_ipfs_cid
+from ipfs import upload_to_vortex_storage
 
 logger = structlog.get_logger("vortex.worker")
 
 import os
 import time
-import json
-import redis
 
 from supabase_client import supabase
 
@@ -172,7 +170,7 @@ def process_submission_task(submission_id: str, artifact: str):
 
         # 3. AI Jury / Advisory
         submission.verification_step = 3
-        if asset_type_str in ["media", "document"]:
+        if asset_type_str in ["media", "document", "app"]:
             import asyncio
             jury_res = asyncio.run(multimodal_eval(asset_type_str, artifact, bounty.verification_criteria))
             submission.jury_passed = jury_res["pass"]
@@ -206,6 +204,7 @@ def process_submission_task(submission_id: str, artifact: str):
         submission.settlement_time = elapsed
         bounty.status = BountyStatus.SETTLED
         bounty.settled_at = datetime.now(timezone.utc)
+        bounty.developer_wallet = submission.seller_wallet
 
         # On-Chain Settlement
         settlement_tx = "Local Registry Only"

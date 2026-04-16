@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Supabase infrastructure (assuming external for real prod, but this could be Local Supabase)
+  
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: vortex_dev_password
+      POSTGRES_DB: vortex
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - ROLE=api
+      - DATABASE_URL=postgresql://postgres:vortex_dev_password@postgres:5432/vortex
+      - REDIS_URL=redis://redis:6379/0
+      # Provide other variables in a .env file
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - ./backend/.env
+
+  backend-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - ROLE=worker
+      - DATABASE_URL=postgresql://postgres:vortex_dev_password@postgres:5432/vortex
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      # Inject host docker socket so the container can spawn sandbox containers
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - ./backend/.env
+
+volumes:
+  postgres_data:
+  redis_data:
