@@ -13,6 +13,7 @@ from typing import Optional
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
 load_dotenv()
 
@@ -54,67 +55,94 @@ def _get_call_name(node: ast.Call) -> str:
     return ""
 
 # ═══════════════════════════════════════════════
-# LAYER 2: MULTIMODAL AI EVALUATION (DESIGN/DOCS)
+# LAYER 2: MULTI-AGENT AI CONSENSUS (THE "JUDGE" MODEL)
 # ═══════════════════════════════════════════════
 
-async def multimodal_eval(asset_type: str, content: str, criteria: str, category: str = "general") -> dict:
-    """
-    Elite Enterprise Evaluation Engine.
-    Uses Gemini for designs and documents.
-    """
-    
-    if asset_type == "media":
-        user_content = f"Evaluate this design against requirements:\n{criteria}\n\n[Image data provided as base64]:\n{content[:200]}..."
-        system_msg = "You are a Senior Design Lead. Evaluate design quality and requirement alignment."
-    else:
-        user_content = f"Requirements:\n{criteria}\n\nSubmission:\n{content}"
-        system_msg = "You are an Elite Enterprise Content Reviewer. Check for accuracy, logic, and style."
-
-    eval_json_format = """Return JSON: {"verdict": "pass"|"fail", "score": 0-100, "feedback": "str", "flags": [{"type": "error"|"warning", "message": "str", "line": int|null, "coord": [x,y]|null}]}"""
-
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(3),
+    retry=retry_if_exception_type(Exception),
+    reraise=True
+)
+async def _ask_agent(system_msg: str, user_msg: str) -> dict:
+    """Helper to call Gemini with retries and JSON consistency."""
     try:
         resp = await client.aio.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=user_content,
+            model='gemini-2.5-flash', # Using stable high-perf model
+            contents=user_msg,
             config=types.GenerateContentConfig(
-                system_instruction=f"{system_msg}\n{eval_json_format}\nCRITICAL: If failures found, specify exact line numbers (for docs) or x,y coords (for images).",
-                temperature=0,
+                system_instruction=system_msg,
+                temperature=0.1, # Slight temperature for creative debugging
                 response_mime_type="application/json"
             )
         )
-        result = json.loads(resp.text.strip())
+        return json.loads(resp.text.strip())
     except Exception as e:
-        error_msg = str(e)
-        is_rate_limit = "429" in error_msg or "rate_limit" in error_msg.lower()
-        is_quota = "quota" in error_msg.lower()
-        
-        # DEMO MODE FALLBACK: If AI is unavailable, provide a mock pass to keep the demo moving
-        if os.getenv("VORTEX_DEMO_MODE", "false").lower() == "true":
-            return {
-                "pass": True,
-                "score": 98,
-                "feedback": "[VORTEX DEMO MODE] AI service unavailable. Providing simulated pass for protocol verification.",
-                "is_error": False,
-                "is_demo": True,
-                "flags": [{"type": "warning", "message": "Demo Mode active: Simulation used due to upstream API issue."}]
-            }
+        if "429" in str(e) or "503" in str(e): raise e # Trigger retry
+        return {"error": str(e), "verdict": "fail", "feedback": f"API Error: {str(e)}"}
 
-        return {
-            "pass": False, 
-            "score": 0, 
-            "feedback": "AI Quota Exhausted. Please check billing." if is_quota else ("AI Service Congested. Please retry in 60s." if is_rate_limit else f"AI Eval Fault: {error_msg}"), 
-            "is_error": True,
-            "is_rate_limit": is_rate_limit or is_quota,
-            "flags": [{"type": "error", "message": "Infrastructure bottleneck: API issue." if is_quota else "Service congestion."}]
-        }
+async def multi_agent_consensus(asset_type: str, content: str, criteria: str) -> dict:
+    """
+    Advanced Startup Consensus Engine.
+    1. Prosecutor: Finds every reason to FAIL.
+    2. Defender: Finds every reason to PASS.
+    3. Judge: Analyzes both and makes final decision.
+    """
+    
+    # ── AGENT 1: PROSECUTOR (CRITICAL AUDITOR) ──
+    p_system = "You are a Ruthless Prosecutor. Your goal is to find bugs, requirement violations, and quality flaws. DO NOT mention positives."
+    p_user = f"Bounty Criteria:\n{criteria}\n\nSubmission Content:\n{content[:5000]}" # Limit context
+    
+    p_task = _ask_agent(p_system, f"{p_user}\n\nReturn JSON: " + '{"indictment": "str", "violations": [{"type": "str", "message": "str"}]}')
 
+    # ── AGENT 2: DEFENDER (ADVOCATE) ──
+    d_system = "You are a Sophisticated Defender. Your goal is to prove the submission meets all criteria and highlight its strengths."
+    d_user = p_user
+    d_task = _ask_agent(d_system, f"{d_user}\n\nReturn JSON: " + '{"brief": "str", "strengths": [{"type": "str", "message": "str"}]}')
+
+    # Run in parallel
+    p_res, d_res = await asyncio.gather(p_task, d_task)
+
+    # ── AGENT 3: THE JUDGE (FINAL ARBITER) ──
+    j_system = "You are the Supreme Judge of the VORTEX Protocol. You must weigh the Prosecutor's indictment and the Defender's brief to reach a final verdict."
+    j_user = f"""
+    CRITERIA: {criteria}
+    
+    PROSECUTOR'S INDICTMENT:
+    {json.dumps(p_res)}
+    
+    DEFENDER'S BRIEF:
+    {json.dumps(d_res)}
+    
+    VERDICT GUIDELINES:
+    - Pass if all core requirements met.
+    - Fail if security risk or missing functional criteria.
+    """
+    
+    j_msg = j_user + "\n\nReturn JSON: " + '{"verdict": "pass"|"fail", "score": 0-100, "feedback": "str"}'
+    
+    final_res = await _ask_agent(j_system, j_msg)
+    
     return {
-        "pass": result.get("verdict") == "pass",
-        "score": result.get("score", 0),
-        "feedback": result.get("feedback", "No feedback provided."),
-        "flags": result.get("flags", []),
+        "pass": final_res.get("verdict") == "pass",
+        "score": final_res.get("score", 0),
+        "feedback": final_res.get("feedback", "No consensus reached"),
+        "agents": {
+            "prosecutor": p_res,
+            "defender": d_res
+        }
+    }
+
+async def multimodal_eval(asset_type: str, content: str, criteria: str, category: str = "general") -> dict:
+    """Enhanced Multimodal eval using consensus."""
+    # Logic for image handling could be added here, but for now we follow the general consensus pattern
+    res = await multi_agent_consensus(asset_type, content, criteria)
+    return {
+        "pass": res["pass"],
+        "score": res["score"],
+        "feedback": res["feedback"],
         "is_ai_evaluated": True,
-        "is_discordant": any(f.get('type') == 'error' for f in result.get("flags", []))
+        "agent_logs": res["agents"]
     }
 
 # ═══════════════════════════════════════════════
@@ -122,25 +150,11 @@ async def multimodal_eval(asset_type: str, content: str, criteria: str, category
 # ═══════════════════════════════════════════════
 
 async def advisory_audit(code: str, requirements: str) -> dict:
-    system_prompt = """Review this code for safety and logic errors. 
-    Return JSON: {"verdict": "safe"|"unsafe", "feedback": "str", "flags": [{"type": "vulnerability"|"logic", "message": "str", "line": int}]}"""
-    try:
-        resp = await client.aio.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=f"Requirements: {requirements}\n\nCode:\n{code}",
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=0,
-                response_mime_type="application/json"
-            )
-        )
-        result = json.loads(resp.text.strip())
-    except:
-        result = {"verdict": "safe", "feedback": "AI audit skipped.", "flags": []}
-    
+    """Consensus-based audit for technical requirements."""
+    res = await multi_agent_consensus("code", code, requirements)
     return {
-        "advisory_verdict": result.get("verdict", "safe"),
-        "summary": result.get("feedback", "Audit complete."),
-        "flags": result.get("flags", []),
-        "is_advisory_only": True
+        "advisory_verdict": "safe" if res["pass"] else "unsafe",
+        "summary": res["feedback"],
+        "is_advisory_only": True,
+        "agent_logs": res["agents"]
     }

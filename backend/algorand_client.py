@@ -9,7 +9,7 @@ import base64
 import logging
 from typing import Optional
 
-from algosdk import account, mnemonic, transaction, encoding
+from algosdk import account, mnemonic, transaction, encoding, logic
 from algosdk.v2client import algod, indexer
 from dotenv import load_dotenv
 
@@ -39,6 +39,30 @@ def get_account_balance(address: str) -> float:
     except Exception as e:
         logger.error(f"Balance check failed for {address}: {e}")
         return 0.0
+
+
+def verify_escrow_deposit(app_id: int, expected_algo: float) -> bool:
+    """
+    Verify that the smart contract's escrow address holds the promised reward.
+    This is the core 'Anti-Fraud' check for the production launch.
+    """
+    try:
+        app_address = logic.get_application_address(app_id)
+        actual_balance = get_account_balance(app_address)
+        
+        # Buffer for minimum balance requirement (0.1 ALGO)
+        # Contracts need min balance to exist/hold state
+        is_funded = actual_balance >= (expected_algo + 0.1)
+        
+        if not is_funded:
+            logger.warning(
+                f"Escrow funding mismatch for App {app_id}. "
+                f"Expected: {expected_algo}, Actual: {actual_balance}"
+            )
+        return is_funded
+    except Exception as e:
+        logger.error(f"Escrow verification system failure: {e}")
+        return False
 
 
 def get_contract_state(app_id: int) -> dict:

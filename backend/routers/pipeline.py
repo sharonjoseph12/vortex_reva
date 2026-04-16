@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sse_starlette.sse import EventSourceResponse
 import asyncio
-import json
 import time
 import secrets
 import logging
+import os
 from datetime import datetime, timezone
 
 from database import (
@@ -39,28 +38,29 @@ async def summarize_criteria(req: SummarizeRequest, user: dict = Depends(require
     result = await test_generator.summarize_criteria(req.criteria)
     return {"success": True, "data": {"summary": result}}
 
-# SSE event queues managed within this router
-_verification_queues: dict[str, asyncio.Queue] = {}
+from worker import process_submission_task
+from supabase_client import supabase
 
 def _emit(bounty_id: str, event: dict):
-    q = _verification_queues.get(bounty_id)
-    if q:
-        q.put_nowait(event)
+    """Emit high-fidelity pulse to Supabase Realtime Edge — per-bounty channel."""
+    supabase.broadcast(
+        channel=f"verification_{bounty_id}",
+        event=event.get("event", "update"),
+        payload={"data": event, "bounty_id": bounty_id}
+    )
 
 @router.post("/submit/{bounty_id}")
 async def submit_work(
     bounty_id: str,
     req: SubmitWorkRequest,
+    background_tasks: BackgroundTasks,
     user: dict = Depends(require_seller),
     db: Session = Depends(get_db),
 ):
-    sandbox_result = None
-    jury_result = None
-    start_time = time.time()
     bounty = db.query(Bounty).filter(Bounty.id == bounty_id).first()
     if not bounty:
         raise HTTPException(404, "Bounty not found")
-    # Case-insensitive status check
+    
     current_status = str(bounty.status.value if hasattr(bounty.status, 'value') else bounty.status).upper()
     if current_status != "ACTIVE":
         raise HTTPException(400, f"Bounty is not active (status: {current_status})")
@@ -74,183 +74,55 @@ async def submit_work(
     db.commit()
     db.refresh(submission)
 
-    _verification_queues[bounty_id] = asyncio.Queue()
-
-    # --- Start Pipeline (Blocking for now, but emitting events) ---
-    # In a full PRO version, this would be a background task
+    # Run pipeline in background AFTER HTTP response is sent,
+    # so the frontend has time to subscribe to the Supabase channel first.
+    from worker import process_submission_task
+    background_tasks.add_task(process_submission_task, submission.id, req.artifact)
     
-    # Layer 1: Static Analysis
-    asset_type_str = str(bounty.asset_type.value if hasattr(bounty.asset_type, 'value') else bounty.asset_type).lower()
-    print(f"[VORTEX-PIPELINE] Processing Bounty: {bounty_id}, AssetType: {asset_type_str}")
-    
-    if asset_type_str == "code":
-        static_result = await asyncio.to_thread(static_analysis, req.artifact)
-    else:
-        static_result = {
-            "pass": True, 
-            "message": "Protocol: Static Analysis Not Applicable for non-code assets",
-            "logs": ["> Skipping AST Analysis: Target is design/document artifact"]
-        }
-
-    submission.static_passed = static_result["pass"]
     _emit(bounty_id, {
-        "event": "static_result", 
-        "step": 1, 
-        "status": "pass" if static_result["pass"] else "fail",
-        "message": static_result.get("message", "Logic discordance check completed") if static_result["pass"] else "Static analysis failed",
-        "logs": static_result.get("logs", [])
-    })
-    
-    if not static_result["pass"]:
-        submission.status = SubmissionStatus.FAILED
-        db.commit()
-        return {"success": False, "error": "Static analysis failed"}
-
-    # Layer 2: Sandbox (Code only)
-    if asset_type_str == "code":
-        sandbox_result = await asyncio.to_thread(run_in_sandbox, req.artifact, bounty.verification_criteria)
-        print(f"[SANDBOX-DEBUG] pass={sandbox_result['pass']}, docker_error={sandbox_result.get('docker_error')}, timeout={sandbox_result.get('timeout')}")
-        print(f"[SANDBOX-DEBUG] FULL LOGS:\n{sandbox_result.get('logs', '')}")
-        submission.sandbox_passed = sandbox_result["pass"]
-        _emit(bounty_id, {
-            "event": "sandbox_result", 
-            "step": 2, 
-            "status": "pass" if sandbox_result["pass"] else "fail",
-            "message": "Isolated execution successful" if sandbox_result["pass"] else "Sandbox integrity breach",
-            "logs": sandbox_result.get("logs", [])
-        })
-        if not sandbox_result["pass"]:
-             submission.status = SubmissionStatus.FAILED
-             db.commit()
-             return {"success": False, "error": "Sandbox failed"}
-    
-    # Layer 3: AI Jury (Multi-Modal)
-    if asset_type_str in ["media", "document"]:
-        jury_result = await multimodal_eval(
-            asset_type=asset_type_str, 
-            content=req.artifact, 
-            criteria=bounty.verification_criteria
-        )
-        submission.jury_passed = jury_result["pass"]
-        message = jury_result["feedback"]
-        logs = [f"> Vision Verdict: {'PASS' if jury_result['pass'] else 'FAIL'}", f"> Score: {jury_result['score']}/100"]
-        if jury_result.get("flags"):
-             logs.extend([f"! {f['type'].upper()}: {f['message']}" for f in jury_result["flags"]])
-    else:
-        # Code Advisory Audit
-        advisory = await advisory_audit(req.artifact, bounty.requirements)
-        submission.jury_passed = advisory["advisory_verdict"] != "unsafe"
-        message = "AI Advisory consensus reached"
-        logs = [f"> Verdict: {advisory['advisory_verdict']}", f"> Reason: {advisory.get('reason', 'Consensus achieved')}"]
-
-    _emit(bounty_id, {
-        "event": "jury_result", 
-        "step": 3, 
-        "status": "pass" if submission.jury_passed else "fail",
-        "message": message,
-        "logs": logs
-    })
-
-    if not submission.jury_passed:
-         submission.status = SubmissionStatus.FAILED
-         db.commit()
-         is_rate_limit = jury_result.get("is_rate_limit") if jury_result else False
-         error_kind = "AI Service Error (Rate Limit)" if is_rate_limit else "AI Jury Rejection"
-         return {"success": False, "error": f"{error_kind}: {message}"}
-
-    # Finalize Settlement
-    elapsed = round(time.time() - start_time, 2)
-    submission.status = SubmissionStatus.PASSED
-    submission.settlement_time = elapsed
-    
-    bounty.status = BountyStatus.SETTLED
-    bounty.developer_wallet = user["wallet"]
-    bounty.settled_at = datetime.now(timezone.utc)
-    
-    # Layer 4: Oracle Settlement (On-Chain)
-    settlement_txs = []
-    if bounty.app_id:
-        try:
-            _emit(bounty_id, {
-                "event": "oracle_voting", 
-                "step": 4, 
-                "status": "running", 
-                "message": "Oracles reached consensus. Executing Algorand release..."
-            })
-            settlement_txs = await cast_release_votes(bounty.app_id, bounty_id)
-            submission.tx_id = settlement_txs[-1] # The triggering TX
-        except Exception as e:
-            logger.error(f"On-chain settlement failed: {e}")
-            _emit(bounty_id, {"event": "pipeline_error", "message": f"Oracle release failure: {str(e)}"})
-
-    # Layer 5: Professional Mastery NFT & IPFS Pinning
-    try:
-        ipfs_cid = await asyncio.to_thread(ipfs.generate_ipfs_cid, req.artifact)
-        nft_result = await asyncio.to_thread(
-            mint_mastery_nft,
-            solver_address=user["wallet"],
-            bounty_title=bounty.title,
-            ipfs_cid=ipfs_cid
-        )
-        submission.nft_id = str(nft_result["asset_id"])
-        submission.nft_asset_url = f"https://testnet.algoexplorer.io/asset/{nft_result['asset_id']}"
-    except Exception as e:
-        logger.error(f"NFT Minting failed: {e}")
-
-    db.commit()
-
-    _emit(bounty_id, {
-        "event": "settlement_complete", 
-        "step": 4, 
-        "status": "pass",
-        "message": "Oracle release confirmed. Mastery NFT Minted.",
-        "logs": [
-            "> Settlement complete", 
-            f"> Time: {elapsed}s",
-            f"> On-Chain Release: {settlement_txs[-1] if settlement_txs else 'Local Registry Only'}",
-            f"> Credential Issued: {submission.nft_id if submission.nft_id else 'None'}"
-        ],
-        "data": {
-            "reward": float(bounty.reward_algo), 
-            "settlement_time": elapsed,
-            "nft_id": submission.nft_id,
-            "tx_id": submission.tx_id
-        }
+        "event": "pipeline_started", 
+        "step": 0, 
+        "status": "running",
+        "message": "Sovereign Audit Initiated. Monitoring high-fidelity verification layers..."
     })
 
     return {
         "success": True, 
         "data": {
-            "settlement_time_seconds": elapsed, 
-            "tests_passed": sandbox_result["tests_passed"] if sandbox_result else 0, 
-            "nft_id": submission.nft_id,
-            "tx_id": submission.tx_id
+            "submission_id": submission.id,
+            "status": "processing"
         }
     }
 
-@router.get("/stream/{bounty_id}")
-async def verification_stream(bounty_id: str):
-    queue = _verification_queues.get(bounty_id)
-    if not queue:
-        queue = asyncio.Queue()
-        _verification_queues[bounty_id] = queue
 
-    async def event_generator():
-        try:
-            while True:
-                event = await asyncio.wait_for(queue.get(), timeout=120)
-                yield {
-                    "event": event.get("event", "update"),
-                    "data": json.dumps(event),
-                }
-                if event.get("event") in ("settlement_complete", "pipeline_error"):
-                    break
-        except asyncio.TimeoutError:
-            yield {"event": "ping", "data": "{}"}
-        finally:
-            _verification_queues.pop(bounty_id, None)
-
-    return EventSourceResponse(event_generator())
+@router.get("/submissions/detail/{submission_id}")
+async def get_submission_detail(submission_id: str, db: Session = Depends(get_db)):
+    s = db.query(Submission).filter(Submission.id == submission_id).first()
+    if not s:
+        raise HTTPException(404, "Submission not found")
+        
+    return {
+        "success": True,
+        "data": {
+            "id": s.id,
+            "bounty_id": s.bounty_id,
+            "seller_wallet": s.seller_wallet,
+            "status": str(s.status.value if hasattr(s.status, 'value') else s.status).lower(),
+            "submitted_at": s.submitted_at.isoformat() if s.submitted_at else None,
+            "verification_step": getattr(s, 'verification_step', 0) or 0,
+            "static_passed": getattr(s, 'static_passed', None),
+            "sandbox_passed": getattr(s, 'sandbox_passed', None),
+            "jury_passed": getattr(s, 'jury_passed', None),
+            "last_error": getattr(s, 'last_error', None),
+            "static_logs": s.static_logs,
+            "sandbox_logs": s.sandbox_logs,
+            "jury_logs": s.jury_logs,
+            "tx_id": s.tx_id,
+            "settlement_time": s.settlement_time,
+            "nft_id": s.nft_id,
+            "nft_asset_url": s.nft_asset_url
+        }
+    }
 
 @router.get("/submissions/{bounty_id}")
 async def get_submissions(bounty_id: str, db: Session = Depends(get_db)):

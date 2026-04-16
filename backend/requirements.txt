@@ -13,3 +13,9 @@ httpx
 sse-starlette
 aiofiles
 algorand-python
+psycopg2-binary
+alembic
+redis
+celery
+structlog
+slowapi

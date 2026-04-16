@@ -1,123 +1,177 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { createVerificationStream, type VerificationEvent } from '@/lib/api';
+import { getSubmission } from '@/lib/api';
 import { Terminal, CheckCircle, XCircle, AlertTriangle, Loader } from 'lucide-react';
 import styles from './VerificationTerminal.module.css';
 
 interface Props {
   bountyId: string;
+  submissionId: string;
   active: boolean;
+  onSettled?: (data: Record<string, unknown>) => void;
 }
 
 interface PipelineStep {
   step: number;
   title: string;
-  status: 'idle' | 'running' | 'pass' | 'fail' | 'frozen';
+  status: 'idle' | 'running' | 'pass' | 'fail' | 'na';
   message: string;
-  logs: string[];
 }
 
-const INITIAL_STEPS: PipelineStep[] = [
-  { step: 1, title: 'Static AST Analysis', status: 'idle', message: 'Waiting...', logs: [] },
-  { step: 2, title: 'Sandbox Execution', status: 'idle', message: 'Waiting...', logs: [] },
-  { step: 3, title: 'AI Advisory Jury', status: 'idle', message: 'Waiting...', logs: [] },
-  { step: 4, title: 'Oracle Settlement', status: 'idle', message: 'Waiting...', logs: [] },
+const STEP_TITLES = [
+  'Static AST Analysis',
+  'Sandbox Execution',
+  'AI Advisory Jury',
+  'Oracle Settlement',
 ];
 
-export default function VerificationTerminal({ bountyId, active }: Props) {
-  const [steps, setSteps] = useState<PipelineStep[]>(INITIAL_STEPS);
-  const [allLogs, setAllLogs] = useState<string[]>(['> VORTEX Protocol v1.0 initialized', '> Awaiting submission...']);
+function buildSteps(data: any): PipelineStep[] {
+  const step = data.verification_step ?? 0;
+  const status = data.status ?? 'processing';
+  const failed = status === 'failed';
+  const passed = status === 'passed';
+
+  return STEP_TITLES.map((title, i) => {
+    const n = i + 1; // 1-indexed
+
+    let stepStatus: PipelineStep['status'] = 'idle';
+    let message = 'Waiting...';
+
+    if (passed) {
+      stepStatus = 'pass';
+      message = stepMessages(n, data, true);
+    } else if (failed && step === n) {
+      stepStatus = 'fail';
+      message = data.last_error ?? 'Step failed';
+    } else if (failed && step > n) {
+      stepStatus = 'pass';
+      message = stepMessages(n, data, true);
+    } else if (step > n) {
+      stepStatus = 'pass';
+      message = stepMessages(n, data, true);
+    } else if (step === n) {
+      stepStatus = 'running';
+      message = 'Processing...';
+    }
+
+    return { step: n, title, status: stepStatus, message };
+  });
+}
+
+function stepMessages(n: number, data: any, done: boolean): string {
+  if (n === 1) return data.static_passed === false ? 'Security violation detected' : 'Syntax & security audit passed';
+  if (n === 2) return data.sandbox_passed === false ? 'Tests failed' : 'Execution complete';
+  if (n === 3) return data.jury_passed === false ? 'AI Jury rejected' : 'Advisory consensus reached';
+  if (n === 4) return data.tx_id ? `TX: ${data.tx_id.slice(0, 12)}...` : 'Oracle consensus achieved';
+  return done ? 'Complete' : 'Processing...';
+}
+
+export default function VerificationTerminal({ bountyId, submissionId, active, onSettled }: Props) {
+  const [steps, setSteps] = useState<PipelineStep[]>(
+    STEP_TITLES.map((title, i) => ({ step: i + 1, title, status: 'idle', message: 'Waiting...' }))
+  );
+  const [logs, setLogs] = useState<string[]>([
+    '> VORTEX Protocol v1.0 initialized',
+    '> Pipeline starting...',
+  ]);
   const [settled, setSettled] = useState(false);
-  const [settlementData, setSettlementData] = useState<Record<string, unknown> | null>(null);
   const logsRef = useRef<HTMLDivElement>(null);
-  const esRef = useRef<EventSource | null>(null);
+  const settledRef = useRef(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || !submissionId) return;
 
-    // Reset
-    setSteps(INITIAL_STEPS);
-    setAllLogs(['> VORTEX Protocol v1.0 initialized', '> Pipeline starting...']);
+    settledRef.current = false;
     setSettled(false);
-    setSettlementData(null);
+    setLogs(['> VORTEX Protocol v1.0 initialized', '> Pipeline starting...']);
+    setSteps(STEP_TITLES.map((title, i) => ({ step: i + 1, title, status: 'idle', message: 'Waiting...' })));
 
-    const es = createVerificationStream(
-      bountyId,
-      (event: VerificationEvent) => {
-        // Update step status
-        setSteps((prev) => {
-          const updated = [...prev];
-          const idx = event.step - 1;
-          if (idx >= 0 && idx < updated.length) {
-            updated[idx] = {
-              ...updated[idx],
-              status: (event.status || 'running') as PipelineStep['status'],
-              message: event.message || 'Processing...',
-              logs: [...(updated[idx].logs || []), ...(event.logs || [])],
-            };
-          }
-          return updated;
-        });
+    let prevStep = 0;
 
-        // Append to global log
-        const incomingLogs = event.logs || [];
-        if (incomingLogs.length > 0) {
-          setAllLogs((prev) => [...prev, ...incomingLogs]);
+    async function poll() {
+      if (settledRef.current) return;
+      try {
+        const res = await getSubmission(submissionId);
+        const data = res.data as any;
+        const newSteps = buildSteps(data);
+        setSteps(newSteps);
+
+        // Append log lines when a new step starts
+        if (data.verification_step > prevStep) {
+          const stepLabels: Record<number, string> = {
+            1: '> Static AST Analysis running...',
+            2: '> Sandbox Execution running...',
+            3: '> AI Advisory Jury deliberating...',
+            4: '> Oracle consensus voting...',
+          };
+          const line = stepLabels[data.verification_step];
+          if (line) setLogs(prev => [...prev, line]);
+          prevStep = data.verification_step;
         }
 
-        // Settlement complete
-        if (event.event === 'settlement_complete') {
+        const done = data.status === 'passed' || data.status === 'failed';
+        if (done && !settledRef.current) {
+          settledRef.current = true;
           setSettled(true);
-          setSettlementData(event.data || null);
-        }
-      },
-      () => {
-        // SSE error — likely stream ended
-      }
-    );
+          if (intervalRef.current) clearInterval(intervalRef.current);
 
-    esRef.current = es;
+          const resultLine = data.status === 'passed'
+            ? `> ✓ Settlement confirmed — ${data.settlement_time?.toFixed(1) ?? '?'}s`
+            : `> ✗ Pipeline failed: ${data.last_error ?? 'Unknown error'}`;
+          setLogs(prev => [...prev, resultLine]);
+
+          if (data.status === 'passed' && onSettled) {
+            onSettled({
+              tests_passed: 0,
+              settlement_time: data.settlement_time,
+              nft_id: data.nft_id,
+              tx_id: data.tx_id,
+              reward: undefined,
+            });
+          }
+        }
+      } catch {
+        // transient error — keep polling
+      }
+    }
+
+    poll(); // immediate first poll
+    intervalRef.current = setInterval(poll, 1500);
 
     return () => {
-      es.close();
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [bountyId, active]);
+  }, [active, submissionId]);
 
-  // Auto-scroll logs
+  // Auto-scroll
   useEffect(() => {
-    if (logsRef.current) {
-      logsRef.current.scrollTop = logsRef.current.scrollHeight;
-    }
-  }, [allLogs]);
+    if (logsRef.current) logsRef.current.scrollTop = logsRef.current.scrollHeight;
+  }, [logs]);
 
-  function getStepIcon(status: string) {
-    switch (status) {
-      case 'running': return <Loader size={14} className={styles.spinning} />;
-      case 'pass': return <CheckCircle size={14} />;
-      case 'fail': return <XCircle size={14} />;
-      case 'frozen': return <AlertTriangle size={14} />;
-      default: return <span className={styles.stepDot} />;
-    }
+  function icon(s: PipelineStep['status']) {
+    if (s === 'running') return <Loader size={14} className={styles.spinning} />;
+    if (s === 'pass') return <CheckCircle size={14} />;
+    if (s === 'fail') return <XCircle size={14} />;
+    if (s === 'na') return <AlertTriangle size={14} />;
+    return <span className={styles.stepDot} />;
   }
 
-  function getLineClass(line: string): string {
-    if (line.includes('PASS') || line.includes('✓') || line.includes('SAFE')) return styles.logSuccess;
-    if (line.includes('FAIL') || line.includes('✗') || line.includes('ERROR')) return styles.logError;
-    if (line.includes('⚠') || line.includes('FREEZE') || line.includes('WARNING')) return styles.logWarning;
-    if (line.includes('Oracle') || line.includes('VOTED') || line.includes('consensus')) return styles.logInfo;
+  function lineClass(line: string) {
+    if (line.includes('✓') || line.includes('PASS') || line.includes('SAFE')) return styles.logSuccess;
+    if (line.includes('✗') || line.includes('FAIL') || line.includes('ERROR')) return styles.logError;
+    if (line.includes('⚠') || line.includes('WARNING')) return styles.logWarning;
+    if (line.includes('Oracle') || line.includes('consensus')) return styles.logInfo;
     return '';
   }
 
   return (
     <div className={styles.container}>
-      {/* Pipeline Steps */}
       <div className={styles.pipeline}>
-        {steps.map((s) => (
+        {steps.map(s => (
           <div key={s.step} className={`${styles.step} ${styles[s.status]}`}>
-            <div className={styles.stepNum}>
-              {getStepIcon(s.status)}
-            </div>
+            <div className={styles.stepNum}>{icon(s.status)}</div>
             <div className={styles.stepInfo}>
               <div className={styles.stepTitle}>{s.title}</div>
               <div className={styles.stepMsg}>{s.message}</div>
@@ -126,68 +180,21 @@ export default function VerificationTerminal({ bountyId, active }: Props) {
         ))}
       </div>
 
-      {/* Terminal Output */}
       <div className={styles.terminal}>
         <div className={styles.termHeader}>
           <Terminal size={12} />
           <span>verification output</span>
-          {settled && (
-            <span className={styles.settledBadge}>SETTLED</span>
-          )}
+          {settled && <span className={styles.settledBadge}>SETTLED</span>}
         </div>
         <div className={styles.termBody} ref={logsRef}>
-          {allLogs.map((line, i) => (
-            <div key={i} className={`${styles.termLine} ${getLineClass(line)}`}>
-              {line}
-            </div>
+          {logs.map((line, i) => (
+            <div key={i} className={`${styles.termLine} ${lineClass(line)}`}>{line}</div>
           ))}
           {!settled && active && (
-            <div className={styles.termLine}>
-              <span className={styles.cursor}>▌</span>
-            </div>
+            <div className={styles.termLine}><span className={styles.cursor}>▌</span></div>
           )}
         </div>
       </div>
-
-      {/* Settlement Summary */}
-      {settled && settlementData && (
-        <div className={styles.settlement}>
-          <div className={styles.settlementHeader}>
-             <div className={styles.settlementTitle}>
-               <CheckCircle size={16} /> Settlement Complete
-             </div>
-             <div className={styles.neuralSync}>
-                <div className={styles.syncPulse}>
-                  <div className={styles.pulseInner} />
-                </div>
-                <span>Neural Sync: OK</span>
-             </div>
-          </div>
-          
-          <div className={styles.settlementGrid}>
-            {'reward' in settlementData && (
-              <div className={styles.settlementItem}>
-                <span className={styles.settlementLabel}>Reward</span>
-                <span className={styles.settlementValue}>
-                  {String(settlementData.reward)} ALGO
-                </span>
-              </div>
-            )}
-            {'settlement_time' in settlementData && (
-              <div className={styles.settlementItem}>
-                <span className={styles.settlementLabel}>Time</span>
-                <span className={styles.settlementValue}>
-                  {String(settlementData.settlement_time)}s
-                </span>
-              </div>
-            )}
-            <div className={styles.settlementItem}>
-               <span className={styles.settlementLabel}>Quorum Consensus</span>
-               <span className={styles.settlementValue} style={{ color: 'var(--accent-primary)' }}>100% Alignment</span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

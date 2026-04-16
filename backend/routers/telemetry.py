@@ -25,7 +25,7 @@ def _resp(data=None, error=None) -> dict:
     }
 
 @router.get("/health")
-async def health():
+def health():
     return _resp({
         "algorand": "connected" if check_algod_connection() else "error",
         "docker": "ready" if check_docker_available() else "error",

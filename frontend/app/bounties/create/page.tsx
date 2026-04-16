@@ -299,7 +299,7 @@ export default function CreateBountyPage() {
               <label htmlFor="verification-criteria" className="input-label" style={{ marginBottom: 0 }}>
                 {form.asset_type === 'code' ? 'Verification Tests (Pytest)' : 'Evaluation Criteria (AI Vision/RAG)'}
               </label>
-              {form.asset_type === 'code' && (
+              {form.asset_type === 'code' ? (
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
@@ -308,6 +308,16 @@ export default function CreateBountyPage() {
                 >
                   <Sparkles size={12} />
                   {generating ? 'Drafting...' : 'AI Generate Tests'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleGenerate}
+                  disabled={generating}
+                >
+                  <Sparkles size={12} />
+                  {generating ? 'Drafting...' : 'AI Generate Criteria'}
                 </button>
               )}
             </div>
