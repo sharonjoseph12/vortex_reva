@@ -63,6 +63,9 @@ export interface SubmissionData {
   static_passed?: boolean;
   sandbox_passed?: boolean;
   jury_passed?: boolean;
+  static_logs?: string[];
+  sandbox_logs?: string[];
+  jury_logs?: string[];
   tx_id?: string;
   settlement_time?: number;
   nft_id?: string;
@@ -70,6 +73,7 @@ export interface SubmissionData {
 }
 
 export interface SubmitWorkResult {
+  submission_id?: string;
   status: string;
   tx_ids?: string[];
   settlement_time_seconds?: number;
@@ -363,6 +367,9 @@ export async function submitWork(
 
 export async function getSubmissions(bountyId: string) {
   return apiFetch<{ submissions: SubmissionData[] }>(`/pipeline/submissions/${bountyId}`);
+}
+export async function getSubmission(submissionId: string) {
+  return apiFetch<SubmissionData>(`/pipeline/submissions/detail/${submissionId}`);
 }
 
 export async function getMySubmissions() {

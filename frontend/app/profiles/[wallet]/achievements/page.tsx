@@ -78,7 +78,7 @@ export default function AchievementsPage() {
                 <div className={styles.imageContainer}>
                   <div className={styles.glow} />
                   <img src={nft.image} alt={nft.name} />
-                  <div style={{ position: 'absolute', bottom: '12px', left: '12px', zindex: 2 }}>
+                  <div style={{ position: 'absolute', bottom: '12px', left: '12px', zIndex: 2 }}>
                     <span className="badge badge-active" style={{ fontSize: '0.6rem', padding: '4px 10px' }}>
                        <ShieldCheck size={10} style={{ marginRight: '4px' }} /> Verified Mastery
                     </span>

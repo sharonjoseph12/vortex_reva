@@ -5,7 +5,6 @@ SQLAlchemy ORM with SQLite. Expanded for Upwork+ functionality.
 """
 
 import uuid
-import json
 import os
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
@@ -13,7 +12,7 @@ from dotenv import load_dotenv
 
 from sqlalchemy import (
     create_engine, Column, String, Text, Float, Integer, Boolean,
-    DateTime, JSON, ForeignKey, Index, Enum, event
+    DateTime, JSON, ForeignKey, event, Numeric
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import StaticPool
@@ -132,8 +131,8 @@ class User(Base):
     
     # Stats
     reputation_score = Column(Float, default=0.0)
-    total_earned = Column(Float, default=0.0)
-    total_locked = Column(Float, default=0.0)
+    total_earned = Column(Numeric(20, 6), default=0.0)
+    total_locked = Column(Numeric(20, 6), default=0.0)
     
     created_at = Column(DateTime, default=utcnow)
     last_active = Column(DateTime, default=utcnow, onupdate=utcnow)
@@ -154,7 +153,7 @@ class Bounty(Base):
     verification_criteria = Column(Text, nullable=True)
     asset_type = Column(String(50), default=AssetType.CODE)
     generated_tests = Column(Boolean, default=False)
-    reward_algo = Column(Float, nullable=False)
+    reward_algo = Column(Numeric(20, 6), nullable=False)
     buyer_wallet = Column(String(58), ForeignKey("users.wallet_address"), nullable=False, index=True)
     developer_wallet = Column(String(58), ForeignKey("users.wallet_address"), nullable=True, index=True)
     app_id = Column(Integer, nullable=True)
@@ -166,6 +165,7 @@ class Bounty(Base):
     settled_at = Column(DateTime, nullable=True)
     settlement_time_seconds = Column(Float, nullable=True)
     tx_id = Column(String(64), nullable=True, index=True)
+    escrow_verified = Column(Boolean, default=False)
 
     # Relationships
     buyer = relationship("User", back_populates="bounties_posted", foreign_keys=[buyer_wallet])
@@ -191,6 +191,11 @@ class Submission(Base):
     settlement_time = Column(Float, nullable=True)
     status = Column(String(50), default=SubmissionStatus.PENDING, index=True)
     tx_id = Column(String(64), nullable=True)
+    
+    # Execution Tracking
+    verification_step = Column(Integer, default=0) # 1: Static, 2: Sandbox, 3: AI Jury, 4: Settlement
+    last_error = Column(Text, nullable=True)
+    processing_started_at = Column(DateTime, nullable=True)
     
     # Forensic Behavioral Metadata (Typed completion signals)
     behavioral_metadata = Column(JSON, nullable=True) 
@@ -273,7 +278,7 @@ class ArbiterVote(Base):
     dispute_id = Column(String(36), ForeignKey("disputes.id"), nullable=False, index=True)
     voter_wallet = Column(String(58), nullable=False)
     vote = Column(String(50), nullable=False)
-    stake_algo = Column(Float, nullable=False)
+    stake_algo = Column(Numeric(20, 6), nullable=False)
     voted_at = Column(DateTime, default=utcnow)
     rewarded = Column(Boolean, default=False)
 
@@ -287,7 +292,7 @@ class Transaction(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     wallet_address = Column(String(58), nullable=False, index=True)
     type = Column(String(50), nullable=False)
-    amount_algo = Column(Float, nullable=False)
+    amount_algo = Column(Numeric(20, 6), nullable=False)
     tx_hash = Column(String(64), unique=True, nullable=False)
     status = Column(String(50), default="PENDING")
     created_at = Column(DateTime, default=utcnow)
@@ -299,7 +304,7 @@ class Transaction(Base):
 # ═══════════════════════════════════════════════
 load_dotenv()
 
-# Absolute path resolution for SQLite to prevent shadowing
+# Absolute path resolution for SQLite to prevent shadowing during dev
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DB_PATH = os.path.join(BASE_DIR, "vortex.db")
 
@@ -307,41 +312,57 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     DATABASE_URL = f"sqlite:///{DEFAULT_DB_PATH}"
 
-# For SQLite, ensure thread safety for FastAPI
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+# SQLAlchemy requires 'postgresql://' instead of Supabase's default 'postgres://'
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# Industrial Connection Pooling for Enterprise Scalability
-if DATABASE_URL.startswith("postgresql"):
+# Detect if we are in production
+IS_PRODUCTION = DATABASE_URL.startswith("postgresql")
+
+# Connection Configuration
+connect_args = {}
+if not IS_PRODUCTION:
+    # Essential for SQLite + FastAPI concurrency
+    connect_args = {"check_same_thread": False}
+
+# Industrial Connection Pooling
+if IS_PRODUCTION:
     engine = create_engine(
         DATABASE_URL,
         pool_size=20,
         max_overflow=10,
-        pool_timeout=30,
+        pool_timeout=60,
         pool_recycle=1800,
+        connect_args=connect_args
     )
 else:
-    # Use StaticPool for SQLite memory compatibility or single-threaded disk WAL
+    # SQLite optimization
     engine = create_engine(
         DATABASE_URL,
-        connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
-        poolclass=StaticPool if "sqlite" in DATABASE_URL else None,
+        connect_args=connect_args,
+        poolclass=StaticPool,
         echo=False,
     )
 
-# Enable WAL mode for concurrent reads
+# Enable WAL mode for SQLite concurrent reads (ignored by Postgres)
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+    if not IS_PRODUCTION:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db():
-    """Create all tables if they don't exist."""
+    """
+    Create all tables. 
+    In production, this is used for INITIAL setup only. 
+    Subsequent changes MUST use Alembic.
+    """
     Base.metadata.create_all(bind=engine)
 
 

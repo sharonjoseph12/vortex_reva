@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from datetime import datetime, timezone
 import logging
 import json
@@ -12,7 +11,7 @@ from database import (
 )
 from auth import require_auth
 from models import CreateDisputeRequest, CastVoteRequest
-from oracle import cast_freeze_vote, cast_release_votes, cast_refund_votes
+from oracle import cast_release_votes, cast_refund_votes
 from api.pulse import emit_pulse_event
 
 router = APIRouter(prefix="/governance", tags=["Governance"])

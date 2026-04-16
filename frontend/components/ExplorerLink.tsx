@@ -12,7 +12,7 @@ interface ExplorerLinkProps {
 export default function ExplorerLink({ type, id, label, className }: ExplorerLinkProps) {
   if (!id) return null;
 
-  const baseUrl = 'https://testnet.algoexplorer.io'; // Standardized for VORTEX Testnet
+  const baseUrl = 'https://testnet.explorer.perawallet.app';
   const path = type === 'transaction' ? 'tx' : type === 'asset' ? 'asset' : 'address';
   const url = `${baseUrl}/${path}/${id}`;
 

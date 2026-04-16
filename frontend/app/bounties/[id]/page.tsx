@@ -19,6 +19,8 @@ import LogicHumanizer from '@/components/LogicHumanizer';
 import ComplianceReceipt from '@/components/ComplianceReceipt';
 import Link from 'next/link';
 import ProfileGate from '@/components/ProfileGate';
+import EvidenceModal from '@/components/EvidenceModal';
+import { getSubmission } from '@/lib/api';
 import styles from './page.module.css';
 
 function timeLeft(deadline?: string): string {
@@ -46,6 +48,7 @@ export default function BountyDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<{ success: boolean; message: string; settlementData?: { tests_passed?: number; settlement_time?: number; nft_id?: string; reward_algo?: number; tx_id?: string } } | null>(null);
   const [pipelineActive, setPipelineActive] = useState(false);
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
 
   // Tab state
   const [tab, setTab] = useState<'details' | 'submit' | 'submissions'>('details');
@@ -59,6 +62,10 @@ export default function BountyDetailPage() {
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [startTime] = useState(Date.now());
   const [focusLossCount, setFocusLossCount] = useState(0);
+
+  // Evidence Modal state
+  const [selectedSub, setSelectedSub] = useState<any | null>(null);
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
 
   useEffect(() => {
     const handleBlur = () => setFocusLossCount(prev => prev + 1);
@@ -137,32 +144,45 @@ export default function BountyDetailPage() {
       };
 
       const res = await submitWork(bountyId, code, wallet, behavioralMetadata);
-      if (res.success && res.data) {
-        const data = res.data;
-        setSubmitResult({
-          success: true,
-          message: `Settlement complete! ${data.tests_passed ?? 0} tests passed in ${data.settlement_time_seconds ?? '?'}s`,
-          settlementData: {
-            tests_passed: data.tests_passed ?? 0,
-            settlement_time: data.settlement_time_seconds ?? 0,
-            nft_id: data.nft_id ?? undefined,
-            reward_algo: bounty?.reward_algo ?? 0,
-          }
-        });
-      } else {
-        setSubmitResult({
-          success: false,
-          message: res.error || 'Submission rejected',
-        });
+      if (res.data?.submission_id) {
+        setSubmissionId(res.data.submission_id);
       }
+      // Pipeline is now running async — VerificationTerminal will poll for updates
     } catch (e) {
       setSubmitResult({
         success: false,
         message: e instanceof Error ? e.message : 'Submission failed',
       });
+      setPipelineActive(false);
     } finally {
       setSubmitting(false);
-      load();
+    }
+  }
+
+  function handlePipelineSettled(data: Record<string, unknown>) {
+    setSubmitResult({
+      success: true,
+      message: `Settlement complete!`,
+      settlementData: {
+        tests_passed: (data.tests_passed as number) ?? 0,
+        settlement_time: (data.settlement_time as number) ?? 0,
+        nft_id: (data.nft_id as string) ?? undefined,
+        reward_algo: bounty?.reward_algo ?? 0,
+        tx_id: (data.tx_id as string) ?? undefined,
+      }
+    });
+    load();
+  }
+
+  async function openEvidence(submissionId: string) {
+    setEvidenceLoading(true);
+    try {
+      const res = await getSubmission(submissionId);
+      setSelectedSub(res.data);
+    } catch (e) {
+      alert('Failed to load forensic evidence');
+    } finally {
+      setEvidenceLoading(false);
     }
   }
 
@@ -491,8 +511,8 @@ export default function BountyDetailPage() {
 
                 <ForensicTimeline 
                    stages={[
-                     { id: '1', name: 'Static AST', description: 'Deterministic syntax & security audit', status: 'passed' },
-                     { id: '2', name: 'Sandbox', description: 'Isolated execution environment', status: (submitResult.settlementData.tests_passed ?? 0) > 0 ? 'passed' : 'running', data: `${submitResult.settlementData.tests_passed} tests passed` },
+                     { id: '1', name: 'Static AST', description: 'Deterministic syntax & security audit', status: bounty?.asset_type === 'code' ? 'passed' : 'pending' },
+                     { id: '2', name: 'Sandbox', description: bounty?.asset_type === 'code' ? `${submitResult.settlementData.tests_passed} tests passed` : 'N/A — AI Jury evaluated', status: bounty?.asset_type === 'code' && (submitResult.settlementData.tests_passed ?? 0) > 0 ? 'passed' : bounty?.asset_type !== 'code' ? 'pending' : 'running' },
                      { id: '3', name: 'AI Jury', description: 'Multi-modal semantic verification', status: 'passed' },
                      { id: '4', name: 'Oracle', description: '2-of-3 Consensus Settlement', status: 'passed', txId: submitResult.settlementData.tx_id || '' }
                    ]}
@@ -502,10 +522,10 @@ export default function BountyDetailPage() {
           </div>
 
           {/* Verification Terminal */}
-          {pipelineActive && (
+          {pipelineActive && submissionId && (
             <div className={styles.section}>
               <h3 className="section-title">Verification Pipeline</h3>
-              <VerificationTerminal bountyId={bountyId} active={pipelineActive} />
+              <VerificationTerminal bountyId={bountyId} submissionId={submissionId} active={pipelineActive} onSettled={handlePipelineSettled} />
             </div>
           )}
         </div>
@@ -534,9 +554,17 @@ export default function BountyDetailPage() {
                       <Check label="Static" passed={s.static_passed} />
                       <Check label="Sandbox" passed={s.sandbox_passed} />
                       <Check label="Jury" passed={s.jury_passed} />
+                      <button 
+                        className={styles.evidenceBtn}
+                        onClick={() => openEvidence(s.id)}
+                        disabled={evidenceLoading}
+                        title="View Detailed Logs"
+                      >
+                        {evidenceLoading && selectedSub?.id === s.id ? 'Loading...' : 'Evidence'}
+                      </button>
                       {s.nft_id && (
                         <a 
-                          href={s.nft_asset_url || `https://testnet.algoexplorer.io/asset/${s.nft_id}`}
+                          href={s.nft_asset_url || `https://testnet.explorer.perawallet.app/asset/${s.nft_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={styles.nftBadge}
@@ -565,6 +593,12 @@ export default function BountyDetailPage() {
             </div>
           )}
         </div>
+      )}
+      {selectedSub && (
+        <EvidenceModal 
+          data={selectedSub} 
+          onClose={() => setSelectedSub(null)} 
+        />
       )}
     </div>
     </ProfileGate>

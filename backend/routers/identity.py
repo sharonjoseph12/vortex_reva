@@ -1,13 +1,14 @@
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import func
 from datetime import datetime, timezone
 import logging
 
 from database import (
-    get_db, User, Bounty, Submission, ArbiterVote, 
-    Review, Transaction, UserRole, SubmissionStatus
+    get_db, User, Bounty, Submission, Review, 
+    SubmissionStatus
 )
 from auth import (
     generate_nonce, verify_algo_signature, create_jwt,
@@ -15,11 +16,12 @@ from auth import (
 )
 from models import (
     NonceRequest, VerifyAuthRequest, UpdateProfileRequest, 
-    CreateReviewRequest, StandardResponse
+    CreateReviewRequest
 )
 
 router = APIRouter(prefix="/identity", tags=["Identity"])
 logger = logging.getLogger("vortex.identity")
+limiter = Limiter(key_func=get_remote_address)
 
 def _resp(data=None, error=None) -> dict:
     return {
@@ -30,7 +32,8 @@ def _resp(data=None, error=None) -> dict:
     }
 
 @router.post("/auth/nonce")
-async def auth_nonce_post(req: NonceRequest):
+@limiter.limit("10/minute")
+async def auth_nonce_post(request: Request, req: NonceRequest):
     nonce = generate_nonce(req.wallet_address)
     return _resp({"nonce": nonce})
 
@@ -58,7 +61,8 @@ async def auth_params():
         })
 
 @router.post("/auth/verify")
-async def auth_verify(req: VerifyAuthRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+async def auth_verify(request: Request, req: VerifyAuthRequest, db: Session = Depends(get_db)):
     if not verify_algo_signature(req.wallet_address, req.nonce, req.signature):
         raise HTTPException(401, "Signature verification failed")
 

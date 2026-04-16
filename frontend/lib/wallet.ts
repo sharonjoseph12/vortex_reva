@@ -15,10 +15,14 @@ import { toast } from 'sonner';
 let peraWallet: PeraWalletConnect | null = null;
 let deflyWallet: DeflyWalletConnect | null = null;
 
+const network = process.env.NEXT_PUBLIC_ALGORAND_NETWORK || 'testnet';
+const chainId = network === 'mainnet' ? 416001 : 416002;
+
 function getPeraWallet(): PeraWalletConnect {
   if (!peraWallet) {
     peraWallet = new PeraWalletConnect({
       shouldShowSignTxnToast: true,
+      chainId
     });
   }
   return peraWallet;
@@ -123,17 +127,13 @@ async function performWalletAuth(
     console.info(`[VORTEX-AUTH] Step 4: Encoding and finalizing...`);
     let signature = "";
     try {
-      // For the backend fallback, we just need to send something as 'signature'
-      // along with the correct 'nonce' and 'wallet'.
-      // We'll use a part of the signed transaction blob.
+      // Send the signed transaction blob (stxn) as the 'signature'
       const rawSig = signedTxns[0];
       signature = btoa(String.fromCharCode(...new Uint8Array(rawSig)));
-      console.info(`[VORTEX-AUTH] Signature hash ready.`);
+      console.info(`[VORTEX-AUTH] Signature blob ready.`);
     } catch (err) {
       console.error("[VORTEX-AUTH] Encoding error:", err);
-      // Even if encoding fails, we'll try to proceed with a dummy sig 
-      // since the backend uses the nonce-match fallback.
-      signature = btoa("tx_auth_fallback");
+      throw new Error("Failed to encode authorization signature.");
     }
 
     // 5. Finalize Verification
@@ -173,8 +173,12 @@ export async function connectDeflyWallet(role: 'buyer' | 'seller', forceNew = fa
 
 /**
  * Demo login — bypasses Pera Wallet for testing.
+ * Strictly disabled in production.
  */
 export async function demoLogin(role: 'buyer' | 'seller'): Promise<void> {
+  if (process.env.NEXT_PUBLIC_ENABLE_DEMO !== 'true') {
+    throw new Error("Demo login is disabled in this environment.");
+  }
   const wallet = 'HR7AKO5XI57MGHPCLC53L3SYGVHDS2RXRO65EPZSESXCJ3HDQJNWPKSRZ4';
 
   try {

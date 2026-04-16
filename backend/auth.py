@@ -9,106 +9,152 @@ import os
 import time
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional
-
+from algosdk import encoding
+import base64
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError, ExpiredSignatureError
-from algosdk import encoding, mnemonic
-from algosdk.transaction import wait_for_confirmation
-import hashlib
 import base64
+import redis
+import logging
 
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger("vortex.auth")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "CHANGE-ME-32-CHAR-RANDOM-STRING!!")
+if SECRET_KEY == "CHANGE-ME-32-CHAR-RANDOM-STRING!!":
+    logger.warning("⚠ SECRET_KEY is using insecure default — set a strong key in .env")
 ALGORITHM = "HS256"
-TOKEN_EXPIRE_HOURS = 24
+TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(24 * 60))) // 60
 
 security = HTTPBearer()
 
 # ═══════════════════════════════════════════════
-# NONCE STORE
-# In-memory dict. Use Redis in production.
+# NONCE STORE (In-Memory for local dev without Redis)
 # ═══════════════════════════════════════════════
 
-_nonce_store: dict[str, dict] = {}
 NONCE_TTL_SECONDS = 300  # 5 minutes
+
+# Redis-backed nonce store (multi-worker safe).
+# Falls back to in-memory if Redis is unavailable (local dev without Redis).
+_redis_client = None
+_nonce_store = {}  # fallback
+
+def _get_redis():
+    global _redis_client
+    if _redis_client is not None:
+        return _redis_client
+    redis_url = os.getenv("REDIS_URL", "")
+    if not redis_url:
+        return None
+    try:
+        r = redis.from_url(redis_url, socket_connect_timeout=1, decode_responses=True)
+        r.ping()
+        _redis_client = r
+        return r
+    except Exception:
+        return None
 
 
 def generate_nonce(wallet_address: str) -> str:
-    """Generate a random 32-byte hex nonce for wallet auth challenge."""
+    """Generate a random 32-byte hex nonce and store with TTL."""
     nonce = secrets.token_hex(32)
-    _nonce_store[wallet_address] = {
-        "nonce": nonce,
-        "created_at": time.time(),
-    }
+    key = f"auth_nonce:{wallet_address}"
+    r = _get_redis()
+    if r:
+        r.setex(key, NONCE_TTL_SECONDS, nonce)
+    else:
+        _nonce_store[key] = {"nonce": nonce, "expires": time.time() + NONCE_TTL_SECONDS}
     return nonce
-
-
-def _cleanup_expired_nonces():
-    """Remove nonces older than TTL."""
-    now = time.time()
-    expired = [k for k, v in _nonce_store.items() if now - v["created_at"] > NONCE_TTL_SECONDS]
-    for k in expired:
-        del _nonce_store[k]
 
 
 # ═══════════════════════════════════════════════
 # SIGNATURE VERIFICATION
 # ═══════════════════════════════════════════════
 
-def verify_algo_signature(wallet_address: str, nonce: str, signature: str) -> bool:
+def verify_algo_signature(wallet_address: str, nonce: str, stxn_b64: str) -> bool:
     """
-    Verify an Algorand wallet signature against the auth challenge.
-    Message format: "VORTEX_AUTH_v1:{nonce}:{wallet}"
-    
-    For hackathon/TestNet: We accept a simplified verification.
-    In production, use proper Algorand message signing (ARC-0001).
+    Verify an Algorand signed transaction against the auth challenge.
+    The transaction should be a 0-algo payment to self with "VORTEX_AUTH:{nonce}" in the note.
     """
-    _cleanup_expired_nonces()
+    import msgpack
+    from nacl.signing import VerifyKey
+    from nacl.exceptions import BadSignatureError
 
-    # Check nonce exists and matches
-    stored = _nonce_store.get(wallet_address)
-    if not stored:
-        return False
-    if stored["nonce"] != nonce:
-        return False
-
-    # Check nonce not expired (prevents replay with old nonces)
-    if time.time() - stored["created_at"] > NONCE_TTL_SECONDS:
-        del _nonce_store[wallet_address]
-        return False
-
-    # Verify the wallet address is valid Algorand address
-    if not encoding.is_valid_address(wallet_address):
-        return False
-
-    # For hackathon: simplified verification
-    # The frontend signs "VORTEX_AUTH_v1:{nonce}:{wallet}" with Pera
-    # We verify the signature matches the expected message
-    expected_message = f"VORTEX_AUTH_v1:{nonce}:{wallet_address}"
+    # 1. Check nonce
+    key = f"auth_nonce:{wallet_address}"
+    r = _get_redis()
+    if r:
+        stored_nonce = r.get(key)
+        if not stored_nonce or stored_nonce != nonce:
+            logger.warning(f"[VERIFY] No nonce or mismatch for wallet: {wallet_address}")
+            return False
+    else:
+        nonce_entry = _nonce_store.get(key)
+        if not nonce_entry or time.time() > nonce_entry["expires"]:
+            logger.warning(f"[VERIFY] No nonce or expired for wallet: {wallet_address}")
+            return False
+        if nonce_entry["nonce"] != nonce:
+            logger.warning(f"[VERIFY] Nonce mismatch for wallet: {wallet_address}")
+            return False
 
     try:
-        # Decode the base64 signature
-        sig_bytes = base64.b64decode(signature)
+        # 2. Decode signed transaction bytes
+        stxn_bytes = base64.b64decode(stxn_b64)
 
-        # For TestNet demo: accept if signature is non-empty and address is valid
-        # Production would use algosdk.transaction.LogicSig or ARC-0001 verification
-        if len(sig_bytes) >= 32 and encoding.is_valid_address(wallet_address):
-            # Delete nonce after use (prevents replay attacks)
-            del _nonce_store[wallet_address]
+        # 3. Unpack — raw=False: msgpack str keys → Python str, bin values → Python bytes
+        decoded = msgpack.unpackb(stxn_bytes, raw=False, strict_map_key=False)
+        raw_sig = decoded.get('sig')      # 64-byte ed25519 signature
+        raw_txn_dict = decoded.get('txn') # transaction fields dict
+
+        if not raw_sig or not raw_txn_dict:
+            logger.warning("[VERIFY] Missing sig or txn in signed message")
+            return False
+
+        # 4. Validate sender and note via algosdk.
+        #    NOTE: encoding.msgpack_decode() expects a base64 STRING, not raw bytes.
+        stxn_obj = encoding.msgpack_decode(stxn_b64)
+        txn_obj = stxn_obj.transaction
+
+        sender = txn_obj.sender if isinstance(txn_obj.sender, str) else encoding.encode_address(txn_obj.sender)
+        if sender != wallet_address:
+            logger.warning(f"[VERIFY] Sender mismatch: {sender} vs {wallet_address}")
+            return False
+
+        note_bytes = getattr(txn_obj, 'note', b'')
+        note_text = note_bytes.decode('utf-8', errors='replace') if note_bytes else ""
+        if f"VORTEX_AUTH:{nonce}" not in note_text:
+            logger.warning(f"[VERIFY] Invalid note: {note_text!r}")
+            return False
+
+        # 5. Reconstruct signed message: b"TX" + canonical msgpack of the txn dict.
+        #    Repacking with use_bin_type=True is byte-identical to what the wallet signed
+        #    because raw=False preserved the original str key types and dict order.
+        repacked = msgpack.packb(raw_txn_dict, use_bin_type=True)
+        msg_to_verify = b"TX" + repacked
+
+        # 6. Verify ed25519 signature directly (b"TX" domain, not b"MX" from util.verify_bytes)
+        verify_key = VerifyKey(encoding.decode_address(wallet_address))
+        try:
+            verify_key.verify(msg_to_verify, bytes(raw_sig))
+            # Invalidate nonce — one-time use
+            if r:
+                r.delete(key)
+            else:
+                _nonce_store.pop(key, None)
+            logger.info(f"[VERIFY] Auth success: {wallet_address}")
             return True
+        except BadSignatureError:
+            logger.warning("[VERIFY] Signature crypto check failed")
+            return False
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"[VERIFY] Exception: {e}", exc_info=True)
+        return False
 
-    # Fallback for demo/testing: accept if nonce matches
-    # This allows testing without Pera Wallet
-    del _nonce_store[wallet_address]
-    return True
+
 
 
 # ═══════════════════════════════════════════════

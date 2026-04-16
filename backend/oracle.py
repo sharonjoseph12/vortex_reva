@@ -10,7 +10,7 @@ For production: each node runs on separate server with separate keys.
 
 import os
 import logging
-from typing import List, Optional
+from typing import List
 
 from algosdk import account, mnemonic, transaction
 from algosdk.v2client import algod
@@ -26,20 +26,30 @@ def _get_algod() -> algod.AlgodClient:
     return algod.AlgodClient(token, url)
 
 
+from supabase_client import supabase
+
 def _load_oracle_accounts() -> list:
-    """Load 3 oracle accounts from environment mnemonics."""
+    """Load 3 oracle accounts from Supabase Vault (Production) or .env (Dev)."""
     accounts = []
     for i in range(1, 4):
-        mn = os.getenv(f"ORACLE_{i}_MNEMONIC", "")
+        # 1. Try Cloud Vault first
+        secret_name = f"oracle_{i}_mnemonic"
+        mn = supabase.call_rpc("get_oracle_secret", {"name": secret_name})
+        
+        # 2. Fallback to environment
+        if not mn:
+            mn = os.getenv(f"ORACLE_{i}_MNEMONIC", "")
+        
         if mn and mn != "word " * 25:
             try:
                 pk = mnemonic.to_private_key(mn)
                 addr = account.address_from_private_key(pk)
                 accounts.append({"private_key": pk, "address": addr, "node": i})
+                logger.info(f"Oracle {i} loaded via {'Vault' if secret_name in str(mn) else 'Environment'}")
             except Exception as e:
                 logger.warning(f"Oracle {i} mnemonic invalid: {e}")
         else:
-            logger.warning(f"Oracle {i} mnemonic not configured")
+            logger.warning(f"Oracle {i} secret not found in Vault or Env")
     return accounts
 
 

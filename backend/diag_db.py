@@ -7,7 +7,7 @@ sys.path.append(os.path.join(os.getcwd(), "backend"))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from backend.database import Base, Bounty, Submission, User
+from backend.database import Bounty, Submission, User
 
 db_path = os.path.join("backend", "vortex.db")
 engine = create_engine(f"sqlite:///{db_path}")

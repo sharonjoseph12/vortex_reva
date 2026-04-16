@@ -120,6 +120,36 @@
   color: var(--text-primary);
 }
 
+.disputeBtn, .evidenceBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-tertiary);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.disputeBtn:hover {
+  border-color: var(--warning);
+  color: var(--warning);
+  background: rgba(255, 170, 0, 0.05);
+}
+
+.evidenceBtn:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: rgba(0, 208, 255, 0.05);
+}
+
 .tabActive {
   color: var(--accent-primary);
   background: var(--accent-primary-dim);

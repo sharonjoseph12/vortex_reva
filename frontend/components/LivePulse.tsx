@@ -15,40 +15,32 @@ interface PulseEvent {
   };
 }
 
+import { supabase } from '@/lib/supabase';
+
 export default function LivePulse() {
   const [events, setEvents] = useState<PulseEvent[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const sse = new EventSource('http://localhost:8000/pulse');
-    
-    sse.onmessage = (e) => {
-      try {
-        const payload = JSON.parse(e.data);
-        const newEvent: PulseEvent = {
-          event: e.type || 'ACTIVITY', // Actually SSE 'event' field is in e.type if named
-          data: payload
-        };
-        // If event is just the generic 'message', starlette might not set type.
-        // We'll trust the payload structure.
-        setEvents(prev => [newEvent, ...prev].slice(0, 10));
-      } catch (err) {
-        console.error('Pulse parse error', err);
-      }
+    // 1. Subscribe to Global Protocol Pulse via Supabase Realtime
+    const channel = supabase.channel('protocol_pulse', {
+      config: { broadcast: { self: true } }
+    })
+    .on('broadcast', { event: '*' }, (payload: any) => {
+      console.log('[VORTEX-PULSE] Event Received:', payload);
+      const newEvent: PulseEvent = {
+        event: payload.event,
+        data: payload.payload.data
+      };
+      setEvents(prev => [newEvent, ...prev].slice(0, 10));
+    })
+    .subscribe((status: string) => {
+      console.log('[VORTEX-PULSE] Subscription Status:', status);
+    });
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-
-    // Polyfill for generic 'message' if event isn't named
-    sse.addEventListener('SETTLEMENT', (e: any) => {
-      const payload = JSON.parse(e.data);
-      setEvents(prev => [{ event: 'SETTLEMENT', data: payload }, ...prev].slice(0, 8));
-    });
-
-    sse.addEventListener('GOVERNANCE_RESOLVED', (e: any) => {
-      const payload = JSON.parse(e.data);
-      setEvents(prev => [{ event: 'GOVERNANCE_RESOLVED', data: payload }, ...prev].slice(0, 8));
-    });
-
-    return () => sse.close();
   }, []);
 
   return (

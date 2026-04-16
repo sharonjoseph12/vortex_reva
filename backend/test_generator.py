@@ -19,7 +19,54 @@ from dotenv import load_dotenv
 load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-SYSTEM_PROMPT = """You are an expert test engineer. Generate pytest unit tests for the task described.
+CODE_CATEGORIES = {"python", "javascript", "rust", "ai_ml", "code"}
+
+NON_CODE_SYSTEM_PROMPT = """You are an expert creative and professional evaluator. Generate clear, objective, measurable evaluation criteria for the task described.
+RULES:
+1. Generate 5-8 specific criteria covering quality, completeness, and deliverable requirements
+2. Each criterion must be binary and objectively verifiable (pass/fail)
+3. Do NOT generate code or pytest tests
+4. No vague terms like "looks good", "high quality", "clean" — be specific and measurable
+5. Return ONLY a numbered plain-text list, no markdown headers, no backticks
+6. Tailor criteria to the category: design=visual specs, document=content/format, legal=clauses/compliance"""
+
+async def generate_unit_tests(task_description: str, category: str = "python") -> dict:
+    """Generate tests (code) or evaluation criteria (non-code) from plain English."""
+    warnings = []
+    is_code = category.lower() in CODE_CATEGORIES
+
+    if not is_code:
+        # Non-code bounty: generate natural language evaluation criteria
+        try:
+            resp = await client.aio.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=f"Category: {category}\nTask: {task_description}",
+                config=types.GenerateContentConfig(
+                    system_instruction=NON_CODE_SYSTEM_PROMPT,
+                    temperature=0.3
+                )
+            )
+            criteria = resp.text.strip()
+            if criteria.startswith("```"):
+                lines = criteria.split("\n")
+                criteria = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+
+            criterion_count = sum(1 for line in criteria.splitlines() if line.strip() and line.strip()[0].isdigit())
+            if criterion_count < 3:
+                warnings.append("Few criteria generated. Consider adding more specific requirements.")
+
+            return {
+                "tests": criteria,
+                "test_count": criterion_count,
+                "covers_edge_cases": True,
+                "warnings": warnings
+            }
+        except Exception as e:
+            return {"tests": "", "test_count": 0, "covers_edge_cases": False,
+                    "warnings": [f"Generation failed: {e}. Write criteria manually."]}
+
+    # Code bounty: generate pytest unit tests
+    SYSTEM_PROMPT = """You are an expert test engineer. Generate pytest unit tests for the task described.
 RULES:
 1. Generate 5-8 test functions covering happy path, edge cases, errors
 2. Tests must be deterministic — no randomness
@@ -28,13 +75,6 @@ RULES:
 5. Return ONLY valid Python code — no markdown, no backticks
 6. Function to test is named 'solution'
 7. Import with: from solution import solution"""
-
-
-async def generate_unit_tests(task_description: str, category: str = "python") -> dict:
-    """Generate unit tests from plain English task description."""
-    warnings = []
-    if category != "python":
-        warnings.append(f"'{category}' not supported yet. Generating Python tests.")
 
     try:
         resp = await client.aio.models.generate_content(
@@ -156,7 +196,7 @@ async def refine_requirements(description: str, requirements: str) -> dict:
     try:
         prompt = f"Description: {description}\nCurrent Requirements: {requirements}"
         resp = await client.aio.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction="""You are the Sovereign AI Scope Refiner. 
@@ -176,7 +216,7 @@ async def summarize_criteria(criteria: str) -> list:
     """Summarize verification code into human logic constraints."""
     try:
         resp = await client.aio.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=f"Summarize these pytest checks into 3-5 bullet points for a developer:\n\n{criteria}",
             config=types.GenerateContentConfig(
                 system_instruction="Return ONLY a JSON array of strings. No markdown.",
@@ -194,7 +234,7 @@ async def analyze_failure(code: str, tests: str, logs: str) -> dict:
     try:
         prompt = f"Failed Code:\n{code}\n\nTests:\n{tests}\n\nExecution Logs:\n{logs}"
         resp = await client.aio.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction="""You are the Sovereign Forensic Analyst.
