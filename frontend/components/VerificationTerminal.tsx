@@ -89,6 +89,8 @@ export default function VerificationTerminal({ bountyId, submissionId, active, o
     setSteps(STEP_TITLES.map((title, i) => ({ step: i + 1, title, status: 'idle', message: 'Waiting...' })));
 
     let prevStep = 0;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let channelRef: any = null;
 
     async function poll() {
       if (settledRef.current) return;
@@ -115,6 +117,9 @@ export default function VerificationTerminal({ bountyId, submissionId, active, o
           settledRef.current = true;
           setSettled(true);
 
+          // Stop polling
+          if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+
           const resultLine = data.status === 'passed'
             ? `> ✓ Settlement confirmed — ${data.settlement_time?.toFixed(1) ?? '?'}s`
             : `> ✗ Pipeline failed: ${data.last_error ?? 'Unknown error'}`;
@@ -135,25 +140,23 @@ export default function VerificationTerminal({ bountyId, submissionId, active, o
       }
     }
 
-    poll(); // immediate first query to hydrate UI
+    // Immediate first poll + interval fallback every 2s
+    poll();
+    pollTimer = setInterval(poll, 2000);
 
-    // Enterprise WebSockets for instantaneous, database-free edge updates
+    // WebSocket as optional accelerator (triggers extra poll on broadcast)
     import('@/lib/supabase').then(({ supabase }) => {
       const channel = supabase.channel(`verification_${bountyId}`)
-        .on('broadcast', { event: '*' }, (payload: any) => {
-           // We successfully caught an edge event!
-           // Poll the DB exactly once upon trigger to hydrate the exact state securely.
-           poll();
-        })
+        .on('broadcast', { event: '*' }, () => { poll(); })
         .subscribe();
-      
-      intervalRef.current = channel as any; // cache the channel to unsubscribe later
-    });
+      channelRef = channel;
+    }).catch(() => { /* WebSocket unavailable — polling handles it */ });
 
     return () => {
+      if (pollTimer) clearInterval(pollTimer);
       import('@/lib/supabase').then(({ supabase }) => {
-        if (intervalRef.current) supabase.removeChannel(intervalRef.current as any);
-      });
+        if (channelRef) supabase.removeChannel(channelRef);
+      }).catch(() => {});
     };
   }, [active, submissionId, bountyId]);
 
