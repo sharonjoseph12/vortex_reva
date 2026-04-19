@@ -22,6 +22,6 @@ VORTEX Protocol is an elite, fault-tolerant bounty escrow system on Algorand. It
 ### ⚒️ Tech Stack Summary
 - **Protocol**: Algorand (App ID 1001)
 - **Languages**: Python (PUYA), TypeScript, CSS
-- **Frameworks**: FastAPI, Next.js 14
-- **AI**: Google Gemini Pro 2.0
-- **Infrastructure**: Docker (Submission Sandbox)
+- **Frameworks**: FastAPI, Next.js 16, Celery
+- **AI**: Google Gemini 2.5 Flash
+- **Infrastructure**: Docker (Solver Sandbox), Supabase Realtime, Redis
