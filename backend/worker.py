@@ -208,15 +208,24 @@ def process_submission_task(submission_id: str, artifact: str):
 
         # On-Chain Settlement
         settlement_tx = "Local Registry Only"
+        DEMO_MODE = os.getenv("VORTEX_DEMO_MODE", "false").lower() == "true"
         if bounty.app_id:
             _emit(bounty_id, {
                 "event": "oracle_voting", "step": 4, "status": "running", 
-                "message": "Oracles reached consensus. Execuring Algorand release..."
+                "message": "Oracles reached consensus. Executing Algorand release..."
             })
-            import asyncio
-            txs = asyncio.run(cast_release_votes(bounty.app_id, bounty.id))
-            submission.tx_id = txs[-1]
-            settlement_tx = txs[-1]
+            if DEMO_MODE or bounty.app_id == DEMO_APP_ID:
+                # Demo mode: simulate oracle consensus without hitting Algorand
+                import uuid as _uuid
+                fake_tx = f"DEMO-ORACLE-{_uuid.uuid4().hex[:16].upper()}"
+                submission.tx_id = fake_tx
+                settlement_tx = fake_tx
+                log.info("oracle_demo_simulated", tx=fake_tx)
+            else:
+                import asyncio
+                txs = asyncio.run(cast_release_votes(bounty.app_id, bounty.id))
+                submission.tx_id = txs[-1]
+                settlement_tx = txs[-1]
 
         # NFT Minting & Cloud Storage
         nft_id = None

@@ -202,6 +202,7 @@ export default function CreateBountyPage() {
               onChange={(e) => update('title', e.target.value)}
               placeholder="e.g., Responsive Landing Page for Fintech Startup"
               required
+              suppressHydrationWarning={true}
             />
           </div>
 
@@ -214,6 +215,7 @@ export default function CreateBountyPage() {
                 className="select" 
                 value={form.category} 
                 onChange={(e) => update('category', e.target.value)}
+                suppressHydrationWarning={true}
               >
                 <optgroup label="Technical">
                   <option value="python">Python Development</option>
@@ -237,7 +239,14 @@ export default function CreateBountyPage() {
             </div>
             <div className={styles.field}>
               <label htmlFor="estimated-difficulty" className="input-label">Estimated Difficulty</label>
-              <select id="estimated-difficulty" name="estimated-difficulty" className="select" value={form.difficulty} onChange={(e) => update('difficulty', e.target.value)}>
+              <select 
+                id="estimated-difficulty" 
+                name="estimated-difficulty" 
+                className="select" 
+                value={form.difficulty} 
+                onChange={(e) => update('difficulty', e.target.value)}
+                suppressHydrationWarning={true}
+              >
                 <option value="easy">Easy (Quick Task)</option>
                 <option value="medium">Medium (Standard)</option>
                 <option value="hard">Hard (Complex Architecture)</option>
@@ -256,6 +265,7 @@ export default function CreateBountyPage() {
               placeholder="Describe the final outcome you expect..."
               required
               style={{ minHeight: '160px' }}
+              suppressHydrationWarning={true}
             />
           </div>
 
@@ -275,6 +285,7 @@ export default function CreateBountyPage() {
                   placeholder="50.0"
                   required
                   style={{ paddingRight: '60px' }}
+                  suppressHydrationWarning={true}
                 />
                 <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>ALGO</span>
               </div>
@@ -289,6 +300,7 @@ export default function CreateBountyPage() {
                 value={form.deadline}
                 onChange={(e) => update('deadline', e.target.value)}
                 required
+                suppressHydrationWarning={true}
               />
             </div>
           </div>
@@ -305,6 +317,7 @@ export default function CreateBountyPage() {
                   className="btn btn-secondary btn-sm"
                   onClick={handleGenerate}
                   disabled={generating}
+                  suppressHydrationWarning={true}
                 >
                   <Sparkles size={12} />
                   {generating ? 'Drafting...' : 'AI Generate Tests'}
@@ -315,6 +328,7 @@ export default function CreateBountyPage() {
                   className="btn btn-secondary btn-sm"
                   onClick={handleGenerate}
                   disabled={generating}
+                  suppressHydrationWarning={true}
                 >
                   <Sparkles size={12} />
                   {generating ? 'Drafting...' : 'AI Generate Criteria'}
@@ -338,6 +352,7 @@ export default function CreateBountyPage() {
                 background: 'var(--bg-secondary)',
                 fontSize: '0.875rem'
               }}
+              suppressHydrationWarning={true}
             />
             <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <ShieldCheck size={12} /> Funds are locked in escrow and only released if these criteria are met.
@@ -420,6 +435,7 @@ function TypeButton({ active, onClick, icon, label }: { active: boolean; onClick
       type="button"
       className={`${styles.typeBtn} ${active ? styles.typeBtnActive : ''}`}
       onClick={onClick}
+      suppressHydrationWarning={true}
     >
       {icon}
       <span>{label}</span>

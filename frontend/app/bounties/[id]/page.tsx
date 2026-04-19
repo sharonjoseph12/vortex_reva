@@ -160,6 +160,7 @@ export default function BountyDetailPage() {
   }
 
   function handlePipelineSettled(data: Record<string, unknown>) {
+    setPipelineActive(false);
     setSubmitResult({
       success: true,
       message: `Settlement complete!`,
@@ -171,7 +172,14 @@ export default function BountyDetailPage() {
         tx_id: (data.tx_id as string) ?? undefined,
       }
     });
-    load();
+    // Silent reload — don't set loading=true to avoid unmounting the UI
+    Promise.all([
+      getBounty(bountyId),
+      getSubmissions(bountyId).catch(() => ({ data: { submissions: [] } })),
+    ]).then(([bountyRes, subRes]) => {
+      setBounty(bountyRes.data);
+      setSubmissions(subRes.data.submissions);
+    });
   }
 
   async function openEvidence(submissionId: string) {
